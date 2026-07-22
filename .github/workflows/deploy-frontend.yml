@@ -33,14 +33,14 @@ jobs:
       - name: Run lint
         run: npm run lint --if-present
 
-      - name: Build
+      - name: Build frontend
         run: npm run build
 
       - name: Verify build output
         run: |
-          test -s dist/index.html
-          echo "dist/index.html exists"
-          find dist -maxdepth 2 -type f | head -30
+          test -s dist/client/index.html
+          echo "dist/client/index.html exists"
+          find dist/client -maxdepth 2 -type f | head -30
 
       - name: Configure SSH
         shell: bash
@@ -66,29 +66,17 @@ jobs:
             "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}" \
             "echo 'SSH connection successful'"
 
-      - name: Deploy static assets
+      - name: Deploy frontend
         shell: bash
         run: |
           rsync \
             --archive \
             --compress \
             --delete \
-            --exclude='index.html' \
             --chmod=D755,F644 \
             -e "ssh -i $HOME/.ssh/id_ed25519 -o IdentitiesOnly=yes" \
-            dist/ \
+            dist/client/ \
             "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:/opt/1panel/www/sites/codes123/index/"
-
-      - name: Deploy index.html last
-        shell: bash
-        run: |
-          rsync \
-            --archive \
-            --compress \
-            --chmod=D755,F644 \
-            -e "ssh -i $HOME/.ssh/id_ed25519 -o IdentitiesOnly=yes" \
-            dist/index.html \
-            "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:/opt/1panel/www/sites/codes123/index/index.html"
 
       - name: Verify deployment
         shell: bash
