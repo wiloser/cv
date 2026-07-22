@@ -1,4 +1,4 @@
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, ExternalLink } from 'lucide-react'
 import { useEffect } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { getProjectBySlug, type RepositoryProject } from '../data/projects'
@@ -71,7 +71,14 @@ export function ProjectDetail({ projects }: ProjectDetailProps) {
           </dl>
           <h3 className="mt-5 mb-2.5 text-xs">技术栈</h3>
           <div className="flex flex-wrap gap-1.5">{project.technologies.map((technology) => <span className="rounded-[9px] border border-[#5362c9]/10 bg-[#eceefd] px-[9px] py-[5px] text-[9px] font-semibold text-[#3948ad] dark:bg-[#2d3352] dark:text-[#b7bfff]" key={technology}>{technology}</span>)}</div>
-          <Link className="mt-[22px] flex min-h-[38px] items-center justify-center rounded-[11px] bg-[#eeede8] text-[11px] font-semibold no-underline hover:bg-[#eceefd] hover:text-[#3948ad] dark:bg-[#2a2f2b] dark:hover:bg-[#2d3352] dark:hover:text-[#b7bfff]" to="/projects">查看其他项目</Link>
+          <a
+            className="mt-[22px] flex min-h-[38px] items-center justify-center gap-1.5 rounded-[11px] bg-[#eeede8] text-[11px] font-semibold no-underline hover:bg-[#eceefd] hover:text-[#3948ad] dark:bg-[#2a2f2b] dark:hover:bg-[#2d3352] dark:hover:text-[#b7bfff]"
+            href={project.deploymentUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            访问在线项目 <ExternalLink className="size-3.5" aria-hidden="true" />
+          </a>
         </aside>
       </div>
     </main>

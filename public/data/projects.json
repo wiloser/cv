@@ -12,7 +12,8 @@
     "technologies": ["React 19", "Django 4.2", "DRF", "Zustand", "SQLite"],
     "features": ["课程、知识点与前置依赖图谱管理", "结合掌握度和前置就绪度生成学习路径", "记录学习进度后动态重算推荐结果", "用户注册、JWT 登录与选课学习闭环"],
     "highlights": ["混合评分同时考虑知识结构、难度与群体反馈", "为每个推荐结果提供可解释的评分依据", "包含冷启动策略以及推荐算法和核心接口测试"],
-    "environment": ["Node.js 22 LTS", "Python 3.10+", "SQLite（开发环境）"]
+    "environment": ["Node.js 22 LTS", "Python 3.10+", "SQLite（开发环境）"],
+    "deploymentUrl": "https://bishe.codes123.cn/learning/"
   },
   {
     "owner": "chenxu",
@@ -27,7 +28,8 @@
     "technologies": ["React 19", "Django 4.2", "DRF", "UserCF", "SQLite"],
     "features": ["商品分类、搜索、筛选和详情浏览", "购物袋、库存校验、订单创建与取消", "浏览、加购、购买和评分行为采集", "个性化推荐、热门回退与管理员功能"],
     "highlights": ["以显式评分和隐式行为构建用户—商品偏好矩阵", "使用余弦相似度、显著性收缩和热门结果补足", "订单事务同步维护库存、销量和推荐反馈信号"],
-    "environment": ["Node.js 22 LTS", "Python 3.10+", "SQLite", "Bash 3.2+"]
+    "environment": ["Node.js 22 LTS", "Python 3.10+", "SQLite", "Bash 3.2+"],
+    "deploymentUrl": "https://bishe.codes123.cn/product/"
   },
   {
     "owner": "chenxu",
@@ -42,7 +44,8 @@
     "technologies": ["React 19", "Django 4.2", "ECharts", "SnowNLP", "jieba"],
     "features": ["按视频地址抓取和保存弹幕数据", "SnowNLP 与百度 AI 双引擎情感分析", "情感分布、关键词词云和时间趋势可视化", "历史记录、热门排行和多视频横向对比"],
     "highlights": ["外部服务未配置时可降级到本地分析模型", "使用 Django REST Framework 提供前后端分离接口", "将弹幕密度与情感得分放在同一时间轴分析"],
-    "environment": ["Node.js 22 LTS", "Python 3.10+", "SQLite / MySQL 8.0", "Redis（可选）"]
+    "environment": ["Node.js 22 LTS", "Python 3.10+", "SQLite / MySQL 8.0", "Redis（可选）"],
+    "deploymentUrl": "https://bishe.codes123.cn/bilibili/"
   },
   {
     "owner": "chenxu",
@@ -57,6 +60,7 @@
     "technologies": ["React 19", "Django 4.2", "DRF", "UserCF", "SQLite"],
     "features": ["景点浏览、搜索、分类筛选与详情展示", "评分、收藏和浏览足迹管理", "基于用户的协同过滤个性化推荐", "景点与用户管理后台和演示数据生成"],
     "highlights": ["以真实用户行为形成协同评分矩阵", "数据稀疏时组合分类偏好与热门景点完成冷启动", "后端测试、前端构建、论文图和运行截图形成验收材料"],
-    "environment": ["Node.js 22 LTS", "Python 3.10+", "SQLite（默认）", "MySQL 8.0（可选）"]
+    "environment": ["Node.js 22 LTS", "Python 3.10+", "SQLite（默认）", "MySQL 8.0（可选）"],
+    "deploymentUrl": "https://bishe.codes123.cn/tourist/"
   }
 ]

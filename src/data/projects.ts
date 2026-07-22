@@ -12,6 +12,7 @@ export interface RepositoryProject {
   features: string[]
   highlights: string[]
   environment: string[]
+  deploymentUrl: string
 }
 
 export function getProjectBySlug(projects: RepositoryProject[], slug?: string) {
