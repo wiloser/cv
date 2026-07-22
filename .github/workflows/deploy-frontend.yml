@@ -1,0 +1,101 @@
+name: Deploy frontend
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: codes123-frontend-production
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Configure Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run lint
+        run: npm run lint --if-present
+
+      - name: Build
+        run: npm run build
+
+      - name: Verify build output
+        run: |
+          test -s dist/index.html
+          echo "dist/index.html exists"
+          find dist -maxdepth 2 -type f | head -30
+
+      - name: Configure SSH
+        shell: bash
+        run: |
+          install -m 700 -d "$HOME/.ssh"
+
+          printf '%s\n' "${{ secrets.DEPLOY_SSH_KEY }}" \
+            > "$HOME/.ssh/id_ed25519"
+
+          printf '%s\n' "${{ secrets.DEPLOY_KNOWN_HOSTS }}" \
+            > "$HOME/.ssh/known_hosts"
+
+          chmod 600 "$HOME/.ssh/id_ed25519"
+          chmod 600 "$HOME/.ssh/known_hosts"
+
+      - name: Test SSH connection
+        shell: bash
+        run: |
+          ssh \
+            -i "$HOME/.ssh/id_ed25519" \
+            -o IdentitiesOnly=yes \
+            -o ConnectTimeout=15 \
+            "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}" \
+            "echo 'SSH connection successful'"
+
+      - name: Deploy static assets
+        shell: bash
+        run: |
+          rsync \
+            --archive \
+            --compress \
+            --delete \
+            --exclude='index.html' \
+            --chmod=D755,F644 \
+            -e "ssh -i $HOME/.ssh/id_ed25519 -o IdentitiesOnly=yes" \
+            dist/ \
+            "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:/opt/1panel/www/sites/codes123/index/"
+
+      - name: Deploy index.html last
+        shell: bash
+        run: |
+          rsync \
+            --archive \
+            --compress \
+            --chmod=D755,F644 \
+            -e "ssh -i $HOME/.ssh/id_ed25519 -o IdentitiesOnly=yes" \
+            dist/index.html \
+            "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:/opt/1panel/www/sites/codes123/index/index.html"
+
+      - name: Verify deployment
+        shell: bash
+        run: |
+          ssh \
+            -i "$HOME/.ssh/id_ed25519" \
+            -o IdentitiesOnly=yes \
+            "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}" \
+            "test -s /opt/1panel/www/sites/codes123/index/index.html &&
+             echo 'Deployment successful'"
