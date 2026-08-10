@@ -1,9 +1,9 @@
-import type { Profile } from './profile'
-import type { RepositoryProject } from './projects'
+import type { GraduationCase } from './projects'
+import type { ResourcePost } from './resources'
 
-export interface PortfolioContent {
-  profile: Profile
-  projects: RepositoryProject[]
+export interface SiteContent {
+  resources: ResourcePost[]
+  cases: GraduationCase[]
 }
 
 async function fetchJson<T>(url: string): Promise<T> {
@@ -16,11 +16,11 @@ async function fetchJson<T>(url: string): Promise<T> {
   return response.json() as Promise<T>
 }
 
-export async function loadPortfolioContent(): Promise<PortfolioContent> {
-  const [profile, projects] = await Promise.all([
-    fetchJson<Profile>('/data/profile.json'),
-    fetchJson<RepositoryProject[]>('/data/projects.json'),
+export async function loadSiteContent(): Promise<SiteContent> {
+  const [resources, cases] = await Promise.all([
+    fetchJson<ResourcePost[]>('/data/resources.json'),
+    fetchJson<GraduationCase[]>('/data/projects.json'),
   ])
 
-  return { profile, projects }
+  return { resources, cases }
 }

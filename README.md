@@ -1,22 +1,18 @@
-# 陈序 · 个人作品集
+# 毕设集
 
-一个使用 React、TypeScript、Vite、React Router 和 Tailwind CSS 构建的静态个人作品集。整体借鉴开发者主页的双栏信息布局，并采用独立的柔和圆润视觉风格。网站完全由本地静态配置驱动，不包含登录、后台、评论、数据库或其他服务端状态。
-
-当前姓名、经历和联系方式仍需在正式发布前核对；项目内容已替换为 `bishe/archive/` 中可追溯的真实项目快照。
+一个使用 React、TypeScript、Vite、React Router 和 Tailwind CSS 构建的毕业设计项目聚合与智能检索平台。项目库聚合可运行、可拆解、可继续扩展的本科毕设案例，并支持按自然语言需求、技术栈和选题方向检索。
 
 ## 页面结构
 
-网站包含个人概览、项目列表和项目详情页面：
-
-- `/` 个人概览页集中展示个人方向和常用技术。
-- `/projects` 项目列表页以紧凑的作品卡片呈现全部项目。
-- 点击项目进入 `/projects/:slug`，查看项目功能、技术实现与开发环境。
-
-两个顶部标签使用真实路由切换，不使用页内锚点定位。网站没有筛选、轮播或折叠目录。
+- `/`：项目发现首页，包含智能检索、方向/技术筛选、相关度排序和项目 Grid 预览。
+- `/resources/:slug`：资源文章详情。
+- `/cases`：兼容旧列表链接并跳转到首页项目库。
+- `/cases/:slug`：案例详情，可下载源码 ZIP 与 Markdown 案例说明，也可访问在线演示。
+- `/projects` 与 `/projects/:slug`：兼容旧链接并重定向到新案例路由。
 
 ## 本地开发
 
-建议使用 Node.js 20 或更新版本。
+建议使用 Node.js 22 LTS。
 
 ```bash
 npm ci
@@ -30,40 +26,12 @@ npm run lint
 npm run build
 ```
 
-## 数据维护
+## 内容维护
 
-- 个人资料：`public/data/profile.json`
-- 项目数据：`public/data/projects.json`
+- 选题指南：`public/data/resources.json`
+- 毕设案例：`public/data/projects.json`
+- 源码与案例说明：`public/downloads/`
 
-页面运行时通过 `fetch` 读取 JSON，并使用 `no-store` 避免读取旧缓存。开发服务运行时直接保存 JSON 即可看到页面更新，不需要修改组件或重新启动 Vite。新增项目时，在 `projects.json` 数组中增加一个对象即可。
+页面运行时通过 `fetch` 读取 JSON。更新文章或案例时只需修改对应数据文件；修改页面结构与样式时再重新构建。
 
-线上更新内容时只需替换 `data` 目录中的 JSON 静态文件，无需重新打包 JavaScript。`profile.ts` 和 `projects.ts` 只保留类型约束与按 slug 查询逻辑。
-
-## 代码结构
-
-```text
-src/
-├─ components/
-│  ├─ ProjectDetail.tsx
-│  └─ RepositoryCard.tsx
-├─ data/
-│  ├─ content.ts
-│  ├─ profile.ts
-│  └─ projects.ts
-├─ App.tsx
-├─ main.tsx
-└─ tailwind.css（仅引入 Tailwind）
-
-public/
-└─ data/
-   ├─ profile.json
-   └─ projects.json
-```
-
-## 发布前检查
-
-- 替换演示姓名、所在地和简介。
-- 填写真实邮箱，更新 PDF 简历。
-- 项目变化后，对照 `bishe/archive/README.md` 更新项目描述、技术栈与完成时间。
-- 重新生成 `public/og.png` 和 `public/favicon.png`。
-- 运行 `npm run lint` 与 `npm run build`。
+毕设下载内容用于学习、选题和方案设计参考。公开新的压缩包前，应再次检查敏感配置、个人数据、数据库文件与不必要的构建产物。

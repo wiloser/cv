@@ -1,5 +1,4 @@
-export interface RepositoryProject {
-  owner: string
+export interface GraduationCase {
   name: string
   title: string
   tagline: string
@@ -13,8 +12,12 @@ export interface RepositoryProject {
   highlights: string[]
   environment: string[]
   deploymentUrl: string
+  downloadUrl: string
+  guideUrl: string
+  downloadFormat: string
+  downloadSize: string
 }
 
-export function getProjectBySlug(projects: RepositoryProject[], slug?: string) {
-  return projects.find((project) => project.name === slug)
+export function getCaseBySlug(cases: GraduationCase[], slug?: string) {
+  return cases.find((item) => item.name === slug)
 }
