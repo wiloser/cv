@@ -1,4 +1,5 @@
-import { ArrowUpRight, Check, ExternalLink } from 'lucide-react'
+import { ArrowUpRight, Check, ChevronLeft, ChevronRight, ExternalLink } from 'lucide-react'
+import { useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import type { GraduationCase } from '../data/projects'
 
@@ -7,109 +8,115 @@ interface CaseCardProps {
   matchReasons?: string[]
 }
 
-const previewThemes: Record<string, { accent: string; soft: string; dark: string; label: string; metric: string; metricLabel: string; bars: number[] }> = {
-  'learning-path-recommendation': {
-    accent: '#6d5dfc',
-    soft: '#eeeaff',
-    dark: '#27243b',
-    label: 'LEARNING PATH',
-    metric: '84%',
-    metricLabel: '路径完成度',
-    bars: [32, 58, 44, 76, 63, 88],
-  },
-  'product-recommendation-system': {
-    accent: '#ff6f45',
-    soft: '#fff0e9',
-    dark: '#33251f',
-    label: 'SMART COMMERCE',
-    metric: '2.4k',
-    metricLabel: '推荐点击',
-    bars: [42, 51, 67, 49, 78, 91],
-  },
-  'bilibili-danmaku-sentiment': {
-    accent: '#13a8c7',
-    soft: '#e6f8fb',
-    dark: '#183036',
-    label: 'SENTIMENT LAB',
-    metric: '68%',
-    metricLabel: '正向情绪',
-    bars: [28, 69, 48, 83, 54, 72],
-  },
-  'tourist-attraction-recommendation': {
-    accent: '#16a36a',
-    soft: '#e7f7ef',
-    dark: '#173228',
-    label: 'TRAVEL DISCOVERY',
-    metric: '32',
-    metricLabel: '推荐景点',
-    bars: [38, 61, 55, 74, 68, 86],
-  },
-}
-
-const defaultTheme = {
-  accent: '#5557e8',
-  soft: '#eeefff',
-  dark: '#242540',
-  label: 'PROJECT PREVIEW',
-  metric: '100%',
-  metricLabel: '资料完整度',
-  bars: [35, 52, 47, 70, 64, 82],
-}
-
 export function ProjectPreview({ item, compact = false }: { item: GraduationCase; compact?: boolean }) {
-  const theme = previewThemes[item.name] ?? defaultTheme
+  const images = item.previewImages ?? []
+  const [activeIndex, setActiveIndex] = useState(0)
+  const touchStartX = useRef<number | null>(null)
+
+  const changeSlide = (offset: number) => {
+    if (images.length < 2) return
+    setActiveIndex((current) => (current + offset + images.length) % images.length)
+  }
+
+  const goToSlide = (index: number) => setActiveIndex(index)
+
+  if (images.length === 0) {
+    return (
+      <div className="grid aspect-[16/9] place-items-center rounded-[16px] border border-black/10 bg-[#1b1c1b] text-center text-[11px] text-white/60">
+        暂无真实项目截图
+      </div>
+    )
+  }
+
+  const activeImage = images[activeIndex] ?? images[0]
+  const hasMultipleImages = images.length > 1
 
   return (
     <div
-      className={`project-preview relative overflow-hidden rounded-[16px] border border-black/[0.07] ${compact ? 'min-h-[225px]' : 'min-h-[252px]'}`}
-      style={{ background: theme.soft }}
-      aria-label={`${item.title} 界面预览示意`}
+      aria-label={`${item.title} 真实界面预览`}
+      aria-roledescription="carousel"
+      className={`project-preview group/preview relative isolate aspect-[16/9] overflow-hidden rounded-[16px] border border-black/10 bg-[#171817] shadow-[0_16px_36px_rgba(20,22,20,.12)] ${compact ? 'sm:rounded-[18px]' : ''}`}
+      onKeyDown={(event) => {
+        if (event.key === 'ArrowLeft') {
+          event.preventDefault()
+          changeSlide(-1)
+        }
+        if (event.key === 'ArrowRight') {
+          event.preventDefault()
+          changeSlide(1)
+        }
+      }}
+      onTouchEnd={(event) => {
+        const start = touchStartX.current
+        const end = event.changedTouches[0]?.clientX
+        touchStartX.current = null
+        if (start === null || end === undefined || Math.abs(start - end) < 42) return
+        changeSlide(start > end ? 1 : -1)
+      }}
+      onTouchStart={(event) => { touchStartX.current = event.touches[0]?.clientX ?? null }}
+      role="region"
+      tabIndex={hasMultipleImages ? 0 : -1}
     >
-      <div className="flex h-9 items-center justify-between border-b border-black/[0.07] bg-white/75 px-3 backdrop-blur-sm">
-        <div className="flex gap-1.5" aria-hidden="true"><span className="size-1.5 rounded-full bg-black/15" /><span className="size-1.5 rounded-full bg-black/15" /><span className="size-1.5 rounded-full bg-black/15" /></div>
-        <span className="font-mono text-[7px] tracking-[0.12em] text-black/35">LIVE PROJECT PREVIEW</span>
-        <span className="size-2 rounded-full" style={{ background: theme.accent }} aria-hidden="true" />
+      <div
+        aria-label={`第 ${activeIndex + 1} 张，共 ${images.length} 张：${activeImage.caption}`}
+        aria-roledescription="slide"
+        className="absolute inset-0"
+        role="group"
+      >
+        <img
+          alt={activeImage.alt}
+          className="preview-slide h-full w-full object-cover object-top"
+          decoding="async"
+          key={activeImage.src}
+          loading={compact ? 'eager' : 'lazy'}
+          src={activeImage.src}
+        />
       </div>
 
-      <div className="grid grid-cols-[52px_1fr] p-3 sm:grid-cols-[64px_1fr] sm:p-4">
-        <div className="mr-3 flex flex-col rounded-xl p-2" style={{ background: theme.dark }} aria-hidden="true">
-          <span className="mb-4 size-5 rounded-md" style={{ background: theme.accent }} />
-          {[22, 30, 18, 26].map((width, index) => <span className="mb-2 h-1 rounded-full bg-white/20" key={index} style={{ width }} />)}
-          <span className="mt-auto size-5 rounded-full bg-white/15" />
-        </div>
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-center justify-between bg-gradient-to-b from-black/55 to-transparent px-3 pt-3 pb-8 text-white">
+        <span className="rounded-full border border-white/20 bg-black/35 px-2.5 py-1 font-mono text-[7px] font-bold tracking-[0.1em] backdrop-blur-md">真实项目截图</span>
+        <span className="rounded-full border border-white/20 bg-black/35 px-2.5 py-1 font-mono text-[7px] backdrop-blur-md">{activeIndex + 1} / {images.length}</span>
+      </div>
 
-        <div className="min-w-0">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <span className="font-mono text-[7px] font-bold tracking-[0.11em]" style={{ color: theme.accent }}>{theme.label}</span>
-              <p className="mt-1.5 mb-0 max-w-[205px] truncate text-[11px] font-bold tracking-[-0.025em] text-[#20221f]">{item.title}</p>
-            </div>
-            <span className="rounded-md bg-white/85 px-2 py-1 font-mono text-[7px] text-black/40">DASHBOARD</span>
-          </div>
+      {hasMultipleImages && (
+        <>
+          <button
+            aria-label={`查看上一张：${images[(activeIndex - 1 + images.length) % images.length].caption}`}
+            className="absolute top-1/2 left-3 z-20 grid size-9 -translate-y-1/2 cursor-pointer place-items-center rounded-full border border-white/25 bg-black/45 text-white shadow-lg backdrop-blur-md transition hover:scale-105 hover:bg-black/65 focus-visible:scale-105 sm:opacity-0 sm:group-hover/preview:opacity-100 sm:group-focus-within/preview:opacity-100"
+            onClick={() => changeSlide(-1)}
+            type="button"
+          >
+            <ChevronLeft className="size-4" />
+          </button>
+          <button
+            aria-label={`查看下一张：${images[(activeIndex + 1) % images.length].caption}`}
+            className="absolute top-1/2 right-3 z-20 grid size-9 -translate-y-1/2 cursor-pointer place-items-center rounded-full border border-white/25 bg-black/45 text-white shadow-lg backdrop-blur-md transition hover:scale-105 hover:bg-black/65 focus-visible:scale-105 sm:opacity-0 sm:group-hover/preview:opacity-100 sm:group-focus-within/preview:opacity-100"
+            onClick={() => changeSlide(1)}
+            type="button"
+          >
+            <ChevronRight className="size-4" />
+          </button>
+        </>
+      )}
 
-          <div className="mt-3 grid grid-cols-[.82fr_1.18fr] gap-2">
-            <div className="rounded-xl bg-white/85 p-2.5 shadow-[0_4px_14px_rgba(20,20,20,.04)]">
-              <span className="font-mono text-[7px] text-black/35">{theme.metricLabel}</span>
-              <strong className="mt-2 block text-xl tracking-[-0.06em]" style={{ color: theme.dark }}>{theme.metric}</strong>
-              <div className="mt-2 h-1 overflow-hidden rounded-full bg-black/[0.06]"><div className="h-full w-[72%] rounded-full" style={{ background: theme.accent }} /></div>
-            </div>
-            <div className="flex items-end gap-1 rounded-xl bg-white/85 px-2.5 pt-6 pb-2.5 shadow-[0_4px_14px_rgba(20,20,20,.04)]" aria-hidden="true">
-              {theme.bars.map((height, index) => <span className="min-w-1 flex-1 rounded-t-sm opacity-90" key={index} style={{ background: index === theme.bars.length - 1 ? theme.accent : `${theme.accent}55`, height: `${height}%` }} />)}
-            </div>
-          </div>
-
-          <div className="mt-2 grid grid-cols-3 gap-2">
-            {item.technologies.slice(0, 3).map((technology, index) => (
-              <div className="rounded-lg bg-white/70 px-2 py-2" key={technology}>
-                <span className="block size-1.5 rounded-full" style={{ background: index === 0 ? theme.accent : `${theme.accent}88` }} />
-                <span className="mt-1.5 block truncate font-mono text-[6.5px] text-black/45">{technology}</span>
-              </div>
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex items-end justify-between gap-3 bg-gradient-to-t from-black/75 via-black/30 to-transparent px-3 pt-12 pb-3 text-white">
+        <p aria-live="polite" className="m-0 truncate text-[10px] font-semibold drop-shadow-sm">{activeImage.caption}</p>
+        {hasMultipleImages && (
+          <div className="pointer-events-auto flex items-center gap-1.5" role="tablist" aria-label="选择预览图">
+            {images.map((image, index) => (
+              <button
+                aria-label={`查看第 ${index + 1} 张：${image.caption}`}
+                aria-selected={index === activeIndex}
+                className={`h-1.5 cursor-pointer rounded-full border-0 p-0 shadow-sm transition-all ${index === activeIndex ? 'w-5 bg-[#d9ff63]' : 'w-1.5 bg-white/65 hover:bg-white'}`}
+                key={image.src}
+                onClick={() => goToSlide(index)}
+                role="tab"
+                type="button"
+              />
             ))}
           </div>
-        </div>
+        )}
       </div>
-
-      <span className="absolute right-3 bottom-3 rounded-full border border-black/[0.06] bg-white/85 px-2.5 py-1 font-mono text-[7px] font-bold text-black/45 shadow-sm">ONLINE DEMO</span>
     </div>
   )
 }
@@ -117,9 +124,7 @@ export function ProjectPreview({ item, compact = false }: { item: GraduationCase
 export function CaseCard({ item, matchReasons = [] }: CaseCardProps) {
   return (
     <article className="group flex min-w-0 flex-col rounded-[22px] border border-[#d9dad3] bg-white p-3 transition duration-300 hover:-translate-y-1 hover:border-[#bfc0ba] hover:shadow-[0_22px_50px_rgba(27,29,27,.10)] sm:p-4">
-      <Link className="block rounded-[16px] no-underline outline-offset-4" to={`/cases/${item.name}`}>
-        <ProjectPreview item={item} />
-      </Link>
+      <ProjectPreview item={item} />
 
       <div className="flex flex-1 flex-col px-1 pt-5 sm:px-2">
         <div className="flex flex-wrap items-center justify-between gap-3">

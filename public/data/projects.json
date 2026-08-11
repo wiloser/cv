@@ -15,7 +15,24 @@
     "downloadUrl": "/downloads/learning-path-recommendation-source.zip",
     "guideUrl": "/downloads/learning-path-recommendation.md",
     "downloadFormat": "ZIP 源码包",
-    "downloadSize": "710 KB"
+    "downloadSize": "710 KB",
+    "previewImages": [
+      {
+        "src": "/images/projects/learning-path-recommendation/home.jpg",
+        "alt": "知径个性化学习路径系统首页",
+        "caption": "项目首页"
+      },
+      {
+        "src": "/images/projects/learning-path-recommendation/login.jpg",
+        "alt": "知径个性化学习路径系统登录页面",
+        "caption": "账号登录"
+      },
+      {
+        "src": "/images/projects/learning-path-recommendation/register.jpg",
+        "alt": "知径个性化学习路径系统注册页面",
+        "caption": "账号注册"
+      }
+    ]
   },
   {
     "name": "product-recommendation-system",
@@ -33,7 +50,24 @@
     "downloadUrl": "/downloads/product-recommendation-system-source.zip",
     "guideUrl": "/downloads/product-recommendation-system.md",
     "downloadFormat": "ZIP 源码包",
-    "downloadSize": "6.4 MB"
+    "downloadSize": "6.4 MB",
+    "previewImages": [
+      {
+        "src": "/images/projects/product-recommendation-system/home.jpg",
+        "alt": "知选个性化商城系统首页",
+        "caption": "商城首页"
+      },
+      {
+        "src": "/images/projects/product-recommendation-system/login.jpg",
+        "alt": "知选个性化商城系统登录页面",
+        "caption": "会员登录"
+      },
+      {
+        "src": "/images/projects/product-recommendation-system/register.jpg",
+        "alt": "知选个性化商城系统注册页面",
+        "caption": "创建账号"
+      }
+    ]
   },
   {
     "name": "bilibili-danmaku-sentiment",
@@ -51,7 +85,24 @@
     "downloadUrl": "/downloads/bilibili-danmaku-sentiment-source.zip",
     "guideUrl": "/downloads/bilibili-danmaku-sentiment.md",
     "downloadFormat": "ZIP 源码包",
-    "downloadSize": "2.1 MB"
+    "downloadSize": "2.1 MB",
+    "previewImages": [
+      {
+        "src": "/images/projects/bilibili-danmaku-sentiment/home.jpg",
+        "alt": "B站弹幕情感分析系统首页",
+        "caption": "系统首页"
+      },
+      {
+        "src": "/images/projects/bilibili-danmaku-sentiment/login.jpg",
+        "alt": "B站弹幕情感分析系统登录页面",
+        "caption": "用户登录"
+      },
+      {
+        "src": "/images/projects/bilibili-danmaku-sentiment/result.png",
+        "alt": "B站弹幕情感分析系统样本分析结果",
+        "caption": "分析结果"
+      }
+    ]
   },
   {
     "name": "tourist-attraction-recommendation",
@@ -69,6 +120,23 @@
     "downloadUrl": "/downloads/tourist-attraction-recommendation-source.zip",
     "guideUrl": "/downloads/tourist-attraction-recommendation.md",
     "downloadFormat": "ZIP 源码包",
-    "downloadSize": "1.5 MB"
+    "downloadSize": "1.5 MB",
+    "previewImages": [
+      {
+        "src": "/images/projects/tourist-attraction-recommendation/home.jpg",
+        "alt": "云游迹旅游景点推荐系统首页",
+        "caption": "系统首页"
+      },
+      {
+        "src": "/images/projects/tourist-attraction-recommendation/attractions.jpg",
+        "alt": "云游迹旅游景点列表与筛选页面",
+        "caption": "景点发现"
+      },
+      {
+        "src": "/images/projects/tourist-attraction-recommendation/recommendations.jpg",
+        "alt": "云游迹个性化景点推荐页面",
+        "caption": "个性化推荐"
+      }
+    ]
   }
 ]

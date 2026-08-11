@@ -61,7 +61,7 @@ export function CaseDetail({ cases }: CaseDetailProps) {
             </div>
 
             <div className="rounded-[24px] border border-[#d9dad3] bg-white p-3 shadow-[0_26px_70px_rgba(20,22,20,.12)] sm:p-4">
-              <ProjectPreview compact item={item} />
+              <ProjectPreview compact item={item} key={item.name} />
               <div className="grid grid-cols-3 gap-2 pt-3">
                 <div className="rounded-xl bg-[#f4f4f0] px-3 py-3"><span className="font-mono text-[7px] text-[#8a8d86]">功能模块</span><strong className="mt-1 block text-lg tracking-[-0.05em]">{item.features.length}</strong></div>
                 <div className="rounded-xl bg-[#f4f4f0] px-3 py-3"><span className="font-mono text-[7px] text-[#8a8d86]">技术组件</span><strong className="mt-1 block text-lg tracking-[-0.05em]">{item.technologies.length}</strong></div>

@@ -1,3 +1,9 @@
+export interface ProjectPreviewImage {
+  src: string
+  alt: string
+  caption: string
+}
+
 export interface GraduationCase {
   name: string
   title: string
@@ -16,6 +22,7 @@ export interface GraduationCase {
   guideUrl: string
   downloadFormat: string
   downloadSize: string
+  previewImages: ProjectPreviewImage[]
 }
 
 export function getCaseBySlug(cases: GraduationCase[], slug?: string) {

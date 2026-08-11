@@ -30,8 +30,10 @@ npm run build
 
 - 选题指南：`public/data/resources.json`
 - 毕设案例：`public/data/projects.json`
+- 真实项目截图：`public/images/projects/<项目 slug>/`，并通过案例的 `previewImages` 字段配置轮播顺序、说明和替代文本
 - 源码与案例说明：`public/downloads/`
 
 页面运行时通过 `fetch` 读取 JSON。更新文章或案例时只需修改对应数据文件；修改页面结构与样式时再重新构建。
+项目预览只使用对应项目的真实运行截图或验收截图，不使用示意图、通用图库或模拟后台界面。
 
 毕设下载内容用于学习、选题和方案设计参考。公开新的压缩包前，应再次检查敏感配置、个人数据、数据库文件与不必要的构建产物。
