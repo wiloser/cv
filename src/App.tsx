@@ -45,6 +45,11 @@ interface SearchIntent {
 
 const searchIntents: SearchIntent[] = [
   { label: '推荐系统', triggers: ['推荐', '个性化', '协同过滤', 'usercf', '算法'], signals: ['推荐', '个性化', 'usercf', '协同过滤', '评分', '行为'] },
+  { label: 'Go / 轻量后端', triggers: ['go', 'golang', 'gin', '轻量', '低资源', '单二进制'], signals: ['go', 'golang', 'gin', 'sqlite', '轻量', '单二进制'] },
+  { label: '智能调度', triggers: ['调度', '派单', '冲突', '预约'], signals: ['调度', '派单', '冲突', '预约', '评分', '可解释'] },
+  { label: '实验室场景', triggers: ['实验室', '设备', '仪器'], signals: ['实验室', '设备', '仪器', '预约', '冲突'] },
+  { label: '校园运维', triggers: ['报修', '维修', '运维'], signals: ['报修', '维修', '运维', '派单', '负载'] },
+  { label: '志愿服务', triggers: ['志愿', '公益', '服务匹配'], signals: ['志愿', '公益', '服务', '匹配', '技能'] },
   { label: '数据可视化', triggers: ['数据', '分析', '可视化', '图表', '大屏', 'echarts'], signals: ['数据', '分析', '可视化', '图表', 'echarts', '词云', '趋势'] },
   { label: 'AI / NLP', triggers: ['ai', '人工智能', '智能', 'nlp', '自然语言', '模型', '情感'], signals: ['ai', '智能', 'nlp', '模型', '情感', 'snownlp'] },
   { label: 'Python', triggers: ['python', 'django', '后端'], signals: ['python', 'django', 'drf', '后端'] },
@@ -56,10 +61,10 @@ const searchIntents: SearchIntent[] = [
 ]
 
 const quickSearches = [
-  'Python 推荐系统',
-  '带数据可视化的项目',
-  'React + Django',
-  '适合做算法改进',
+  'Go 智能调度系统',
+  'Gin + SQLite 轻量项目',
+  '带可解释算法的项目',
+  'React + Go 前后端',
 ]
 
 function normalize(value: string) {
@@ -129,9 +134,12 @@ function matchesTechnology(item: GraduationCase, technology: string) {
   if (technology === '全部技术') return true
   const haystack = normalize([item.language, item.category, ...item.technologies, ...item.highlights].join(' '))
   const groups: Record<string, string[]> = {
+    Go: ['go', 'golang'],
+    Gin: ['gin'],
     Python: ['python'],
     'React': ['react'],
     'Django': ['django', 'drf'],
+    SQLite: ['sqlite'],
     '推荐算法': ['推荐', 'usercf', '协同过滤'],
     '数据可视化': ['数据分析', 'echarts', '词云', '可视化'],
   }
@@ -254,7 +262,7 @@ function HomePage({ resources, cases }: SiteContentProps) {
   const deferredQuery = useDeferredValue(query)
   const queryAnalysis = useMemo(() => getQuerySignals(deferredQuery), [deferredQuery])
   const categories = useMemo(() => ['全部方向', ...new Set(cases.map((item) => item.category))], [cases])
-  const technologies = ['全部技术', 'Python', 'React', 'Django', '推荐算法', '数据可视化']
+  const technologies = ['全部技术', 'Go', 'Gin', 'React', 'SQLite', 'Python', 'Django', '推荐算法', '数据可视化']
 
   useEffect(() => {
     document.title = '毕设集 · 毕业设计项目聚合与智能检索平台'
@@ -339,7 +347,7 @@ function HomePage({ resources, cases }: SiteContentProps) {
                   <input
                     className="min-w-0 flex-1 border-0 bg-transparent text-[14px] text-[#151615] outline-none placeholder:text-[#999c95] sm:text-[15px]"
                     onChange={(event) => setQuery(event.target.value)}
-                    placeholder="例如：想做一个 Python 推荐系统，最好有数据可视化…"
+                    placeholder="例如：想做一个 Go 智能调度系统，需要可解释算法…"
                     ref={inputRef}
                     type="search"
                     value={query}
@@ -387,7 +395,7 @@ function HomePage({ resources, cases }: SiteContentProps) {
             {[
               { label: '智能推荐', query: '个性化推荐系统', note: '协同过滤 · 冷启动 · 可解释推荐', icon: <Sparkles className="size-5" />, count: cases.filter((item) => item.category === '推荐系统').length },
               { label: '数据分析', query: '数据分析与可视化', note: '情感分析 · 趋势图表 · 关键词', icon: <BarChart3 className="size-5" />, count: cases.filter((item) => item.category === '数据分析').length },
-              { label: '全栈应用', query: 'React Django 前后端', note: 'React · Django · REST API', icon: <Layers3 className="size-5" />, count: cases.length },
+              { label: '全栈应用', query: 'React Gin 前后端', note: 'React · Gin · REST API · SQLite', icon: <Layers3 className="size-5" />, count: cases.length },
             ].map((topic) => (
               <button className="group flex min-h-[138px] cursor-pointer flex-col items-start bg-white p-5 text-left transition hover:bg-[#f3f3ff] sm:p-6" key={topic.label} onClick={() => chooseSearch(topic.query)} type="button">
                 <span className="flex w-full items-start justify-between text-[#5557e8]">
@@ -447,7 +455,7 @@ function HomePage({ resources, cases }: SiteContentProps) {
         </div>
 
         {results.length > 0 ? (
-          <div className="mt-6 grid gap-5 lg:grid-cols-2">
+          <div className="mt-6 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
             {results.map(({ item }) => (
               <CaseCard item={item} key={item.name} matchReasons={getMatchReasons(item, queryAnalysis.signals)} />
             ))}

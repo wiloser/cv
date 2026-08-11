@@ -82,7 +82,7 @@ export function ProjectPreview({ item, compact = false }: { item: GraduationCase
         <>
           <button
             aria-label={`查看上一张：${images[(activeIndex - 1 + images.length) % images.length].caption}`}
-            className="absolute top-1/2 left-3 z-20 grid size-9 -translate-y-1/2 cursor-pointer place-items-center rounded-full border border-white/25 bg-black/45 text-white shadow-lg backdrop-blur-md transition hover:scale-105 hover:bg-black/65 focus-visible:scale-105 sm:opacity-0 sm:group-hover/preview:opacity-100 sm:group-focus-within/preview:opacity-100"
+            className="absolute top-1/2 left-3 z-20 grid size-9 -translate-y-1/2 cursor-pointer place-items-center rounded-full border border-white/25 bg-black/45 text-white shadow-lg backdrop-blur-md transition hover:scale-105 hover:bg-black/65 focus-visible:scale-105"
             onClick={() => changeSlide(-1)}
             type="button"
           >
@@ -90,7 +90,7 @@ export function ProjectPreview({ item, compact = false }: { item: GraduationCase
           </button>
           <button
             aria-label={`查看下一张：${images[(activeIndex + 1) % images.length].caption}`}
-            className="absolute top-1/2 right-3 z-20 grid size-9 -translate-y-1/2 cursor-pointer place-items-center rounded-full border border-white/25 bg-black/45 text-white shadow-lg backdrop-blur-md transition hover:scale-105 hover:bg-black/65 focus-visible:scale-105 sm:opacity-0 sm:group-hover/preview:opacity-100 sm:group-focus-within/preview:opacity-100"
+            className="absolute top-1/2 right-3 z-20 grid size-9 -translate-y-1/2 cursor-pointer place-items-center rounded-full border border-white/25 bg-black/45 text-white shadow-lg backdrop-blur-md transition hover:scale-105 hover:bg-black/65 focus-visible:scale-105"
             onClick={() => changeSlide(1)}
             type="button"
           >

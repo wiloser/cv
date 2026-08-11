@@ -19,7 +19,9 @@ export interface GraduationCase {
   environment: string[]
   deploymentUrl: string
   downloadUrl: string
-  guideUrl: string
+  guideUrl?: string
+  thesisUrl?: string
+  presentationUrl?: string
   downloadFormat: string
   downloadSize: string
   previewImages: ProjectPreviewImage[]

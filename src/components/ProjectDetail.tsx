@@ -1,4 +1,4 @@
-import { ArrowLeft, Check, Download, ExternalLink, FileText, PackageOpen, PlayCircle } from 'lucide-react'
+import { ArrowLeft, Check, Download, ExternalLink, FileText, PackageOpen, PlayCircle, Presentation } from 'lucide-react'
 import { useEffect } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { getCaseBySlug, type GraduationCase } from '../data/projects'
@@ -56,7 +56,7 @@ export function CaseDetail({ cases }: CaseDetailProps) {
 
               <div className="mt-8 flex flex-wrap gap-2">
                 <a className="inline-flex min-h-11 items-center gap-2 rounded-full bg-[#151615] px-5 text-[11px] font-bold text-white no-underline transition hover:bg-[#5557e8]" href={item.deploymentUrl} target="_blank" rel="noopener noreferrer"><PlayCircle className="size-4" /> 打开在线演示</a>
-                <a className="inline-flex min-h-11 items-center gap-2 rounded-full border border-[#cfd0c9] bg-white px-5 text-[11px] font-bold text-[#151615] no-underline transition hover:border-[#151615]" href={item.downloadUrl} download><Download className="size-4" /> 下载源码</a>
+                <a className="inline-flex min-h-11 items-center gap-2 rounded-full border border-[#cfd0c9] bg-white px-5 text-[11px] font-bold text-[#151615] no-underline transition hover:border-[#151615]" href={item.downloadUrl} download><Download className="size-4" /> 下载项目包</a>
               </div>
             </div>
 
@@ -126,8 +126,10 @@ export function CaseDetail({ cases }: CaseDetailProps) {
               <div className="flex justify-between gap-4 py-2.5 text-[10px]" key={label}><dt className="text-[#858880]">{label}</dt><dd className="m-0 text-right font-semibold text-[#3f423d]">{value}</dd></div>
             ))}
           </dl>
-          <a className="mt-5 flex min-h-11 items-center justify-center gap-2 rounded-full bg-[#151615] px-4 text-[10px] font-bold text-white no-underline transition hover:bg-[#5557e8]" href={item.downloadUrl} download><Download className="size-4" /> 下载项目源码</a>
-          <a className="mt-2 flex min-h-11 items-center justify-center gap-2 rounded-full border border-[#d6d7d0] px-4 text-[10px] font-bold text-[#151615] no-underline transition hover:border-[#151615]" href={item.guideUrl} download><FileText className="size-4" /> 下载案例说明</a>
+          <a className="mt-5 flex min-h-11 items-center justify-center gap-2 rounded-full bg-[#151615] px-4 text-[10px] font-bold text-white no-underline transition hover:bg-[#5557e8]" href={item.downloadUrl} download><Download className="size-4" /> 下载完整项目包</a>
+          {item.thesisUrl && <a className="mt-2 flex min-h-11 items-center justify-center gap-2 rounded-full border border-[#d6d7d0] px-4 text-[10px] font-bold text-[#151615] no-underline transition hover:border-[#151615]" href={item.thesisUrl} download><FileText className="size-4" /> 下载最终论文</a>}
+          {item.presentationUrl && <a className="mt-2 flex min-h-11 items-center justify-center gap-2 rounded-full border border-[#d6d7d0] px-4 text-[10px] font-bold text-[#151615] no-underline transition hover:border-[#151615]" href={item.presentationUrl} download><Presentation className="size-4" /> 下载答辩 PPT</a>}
+          {item.guideUrl && <a className="mt-2 flex min-h-11 items-center justify-center gap-2 rounded-full border border-[#d6d7d0] px-4 text-[10px] font-bold text-[#151615] no-underline transition hover:border-[#151615]" href={item.guideUrl} download><FileText className="size-4" /> 下载案例说明</a>}
           <a className="mt-2 flex min-h-11 items-center justify-center gap-2 rounded-full border border-[#d6d7d0] px-4 text-[10px] font-bold text-[#151615] no-underline transition hover:border-[#151615]" href={item.deploymentUrl} target="_blank" rel="noopener noreferrer">在线演示 <ExternalLink className="size-4" /></a>
           <p className="mt-5 mb-0 rounded-xl bg-[#f6f6f2] p-3 text-[9px] leading-[1.75] text-[#858880]">资料仅供学习、选题与方案设计参考。请基于自己的需求独立完成，并遵守学校学术规范。</p>
         </aside>

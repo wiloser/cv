@@ -138,5 +138,101 @@
         "caption": "个性化推荐"
       }
     ]
+  },
+  {
+    "name": "lab-equipment-booking",
+    "title": "EquipFlow · 实验室设备预约与冲突调度",
+    "tagline": "在预约提交前识别冲突、解释风险并给出替代设备",
+    "description": "面向高校实验室共享仪器场景的完整毕业设计。系统以半开时间区间统一冲突边界，在预约落库前完成设备状态、时间重叠和风险评分，并返回最多三个可执行替代方案。",
+    "category": "资源调度",
+    "completedAt": "2026.08.11",
+    "language": "Go",
+    "languageColor": "#4D7EDC",
+    "technologies": ["React 19", "Gin", "GORM", "SQLite"],
+    "features": ["设备目录、状态与风险等级管理", "预约创建、时段校验与记录查询", "半开区间冲突检测和风险评分", "替代设备推荐与利用率看板"],
+    "highlights": ["使用 A.start < B.end 且 B.start < A.end 统一处理时间重叠", "冲突数量和设备风险形成 0—100 可解释风险分", "Go 测试、生产构建、真实浏览器流程与截图均已验收"],
+    "environment": ["Go 1.21+", "Node.js 22 LTS", "SQLite（纯 Go 驱动）", "无需 Redis / MQ"],
+    "deploymentUrl": "https://bishe.codes123.cn/lab/",
+    "downloadUrl": "/downloads/lab-equipment-booking-complete.zip",
+    "thesisUrl": "/downloads/lab-equipment-booking-thesis.docx",
+    "presentationUrl": "/downloads/lab-equipment-booking-defense.pptx",
+    "downloadFormat": "code / docs / ppt 完整包",
+    "downloadSize": "742 KB",
+    "previewImages": [
+      {
+        "src": "/images/projects/lab-equipment-booking/overview.png",
+        "alt": "EquipFlow 实验室设备预约系统总览界面",
+        "caption": "设备与预约总览"
+      },
+      {
+        "src": "/images/projects/lab-equipment-booking/conflict-detection.png",
+        "alt": "EquipFlow 预约冲突检测结果界面",
+        "caption": "冲突检测与风险解释"
+      }
+    ]
+  },
+  {
+    "name": "campus-repair-dispatch",
+    "title": "RepairOps · 校园报修智能派单",
+    "tagline": "把经验派单拆成可解释、可复现的多维评分决策",
+    "description": "面向高校后勤报修的轻量全栈系统，将维修技能、服务区域、当前负载、历史评分和紧急程度统一量化，生成候选排序与逐项解释，并在事务内同步派单记录和维修员负载。",
+    "category": "智能调度",
+    "completedAt": "2026.08.11",
+    "language": "Go",
+    "languageColor": "#E77A3A",
+    "technologies": ["React 19", "Gin", "GORM", "SQLite"],
+    "features": ["报修工单创建、状态与紧急队列", "维修员技能、区域和负载管理", "多维加权候选评分与解释", "一键确认派单和负载事务更新"],
+    "highlights": ["技能、区域、负载、评分和紧急加成组成透明评分公式", "稳定排序规则保证相同输入得到可复现结果", "Gin 单服务配合 SQLite，避免额外中间件占用云资源"],
+    "environment": ["Go 1.21+", "Node.js 22 LTS", "SQLite（纯 Go 驱动）", "无需消息队列"],
+    "deploymentUrl": "https://bishe.codes123.cn/repair/",
+    "downloadUrl": "/downloads/campus-repair-dispatch-complete.zip",
+    "thesisUrl": "/downloads/campus-repair-dispatch-thesis.docx",
+    "presentationUrl": "/downloads/campus-repair-dispatch-defense.pptx",
+    "downloadFormat": "code / docs / ppt 完整包",
+    "downloadSize": "521 KB",
+    "previewImages": [
+      {
+        "src": "/images/projects/campus-repair-dispatch/overview.png",
+        "alt": "RepairOps 校园报修智能派单系统总览界面",
+        "caption": "工单与负载总览"
+      },
+      {
+        "src": "/images/projects/campus-repair-dispatch/smart-dispatch.png",
+        "alt": "RepairOps 智能派单完成与评分解释界面",
+        "caption": "智能派单与得分解释"
+      }
+    ]
+  },
+  {
+    "name": "volunteer-service-matching",
+    "title": "星愿 · 志愿服务供需智能匹配",
+    "tagline": "技能先过硬门槛，再比较区域、时间、信用与评价",
+    "description": "面向高校志愿服务组织的供需匹配平台。系统先严格检查任务必需技能，再对区域、可用时长、信用和评价进行加权排名；确认匹配时以事务同时写入记录并扣减名额。",
+    "category": "智能匹配",
+    "completedAt": "2026.08.11",
+    "language": "Go",
+    "languageColor": "#3E8B64",
+    "technologies": ["React 19", "Gin", "GORM", "SQLite"],
+    "features": ["志愿者技能、区域、时段与信用档案", "服务任务、必需技能与名额管理", "技能硬门槛和综合适配度排序", "匹配确认、名额扣减与动态记录"],
+    "highlights": ["必需技能采用精确匹配，避免高综合分掩盖关键能力缺失", "候选结果展示得分、排序和逐项推荐理由", "事务保证匹配记录、志愿者状态与任务名额一致"],
+    "environment": ["Go 1.21+", "Node.js 22 LTS", "SQLite（纯 Go 驱动）", "无需外部服务"],
+    "deploymentUrl": "https://bishe.codes123.cn/volunteer/",
+    "downloadUrl": "/downloads/volunteer-service-matching-complete.zip",
+    "thesisUrl": "/downloads/volunteer-service-matching-thesis.docx",
+    "presentationUrl": "/downloads/volunteer-service-matching-defense.pptx",
+    "downloadFormat": "code / docs / ppt 完整包",
+    "downloadSize": "621 KB",
+    "previewImages": [
+      {
+        "src": "/images/projects/volunteer-service-matching/overview.png",
+        "alt": "星愿志愿服务供需智能匹配平台总览界面",
+        "caption": "服务供需总览"
+      },
+      {
+        "src": "/images/projects/volunteer-service-matching/smart-matching.png",
+        "alt": "星愿志愿者智能匹配候选与解释界面",
+        "caption": "智能匹配与候选解释"
+      }
+    ]
   }
 ]
