@@ -7,13 +7,10 @@ import {
   Command,
   Compass,
   GraduationCap,
-  Mail,
-  MapPin,
   Search,
   Send,
   SlidersHorizontal,
   Sparkles,
-  UserRound,
   X,
 } from 'lucide-react'
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
@@ -30,7 +27,6 @@ import {
 import { CaseDetail } from './components/ProjectDetail'
 import { CaseCard } from './components/RepositoryCard'
 import { loadSiteContent, type SiteContent } from './data/content'
-import { profile } from './data/profile'
 import type { GraduationCase } from './data/projects'
 import { getResourceBySlug, type ResourcePost } from './data/resources'
 
@@ -181,11 +177,11 @@ function SiteHeader() {
         <nav className="ml-auto hidden items-center gap-1 md:flex" aria-label="主导航">
           <Link className="rounded-full px-3.5 py-2 text-[12px] font-semibold text-[#5f625d] no-underline transition hover:bg-white hover:text-[#151615]" to="/#projects">发现项目</Link>
           <Link className="rounded-full px-3.5 py-2 text-[12px] font-semibold text-[#5f625d] no-underline transition hover:bg-white hover:text-[#151615]" to="/#customize">定制项目</Link>
-          <Link className="inline-flex items-center gap-1.5 rounded-full border border-[#d6d7d0] bg-white px-3.5 py-2 text-[12px] font-semibold text-[#151615] no-underline transition hover:border-[#5557e8] hover:text-[#5557e8]" to="/#contact"><Mail className="size-3.5" /> 我的联系方式</Link>
+          <span className="rounded-full border border-[#d6d7d0] bg-white px-3.5 py-2 text-[12px] font-semibold text-[#5557e8]">微信：_trees168</span>
         </nav>
 
         <div className="ml-auto flex items-center gap-2 md:ml-2">
-          <Link className="grid size-9 place-items-center rounded-full border border-[#d6d7d0] bg-white text-[#151615] no-underline transition hover:border-[#5557e8] hover:text-[#5557e8] md:hidden" to="/#contact" aria-label="我的联系方式"><Mail className="size-4" /></Link>
+          <span className="hidden rounded-full border border-[#d6d7d0] bg-white px-3 py-2 text-[10px] font-semibold text-[#5557e8] sm:inline-flex md:hidden">微信：_trees168</span>
           <Link className="inline-flex min-h-9 items-center gap-2 rounded-full bg-[#151615] px-4 text-[11px] font-bold text-white no-underline transition hover:bg-[#5557e8]" to="/#smart-search">
             <Sparkles className="size-3.5 text-[#d9ff63]" aria-hidden="true" />
             智能检索
@@ -392,7 +388,7 @@ function HomePage({ cases }: Pick<SiteContentProps, 'cases'>) {
                 `项目方向：${String(data.get('direction') ?? '')}`,
                 `期望技术：${String(data.get('technology') ?? '')}`,
                 `需求描述：${String(data.get('brief') ?? '')}`,
-                `联系我：${String(data.get('contact') ?? '')}`,
+                '联系我：微信 _trees168',
               ].join('\n')
               setRequestSummary(summary)
               setCopied(false)
@@ -411,9 +407,6 @@ function HomePage({ cases }: Pick<SiteContentProps, 'cases'>) {
               <label className="grid gap-2 text-[10px] font-semibold text-[#555852]">你想解决什么问题？
                 <textarea className="min-h-24 resize-y rounded-xl border border-[#d6d7d0] bg-white px-3 py-3 text-[12px] font-normal leading-[1.7] text-[#151615] outline-none placeholder:text-[#a0a29c] focus:border-[#5557e8]" name="brief" placeholder="描述应用场景、核心功能或学校要求…" required />
               </label>
-              <label className="grid gap-2 text-[10px] font-semibold text-[#555852]">你的联系方式
-                <input className="min-h-11 rounded-xl border border-[#d6d7d0] bg-white px-3 text-[12px] font-normal text-[#151615] outline-none placeholder:text-[#a0a29c] focus:border-[#5557e8]" name="contact" placeholder="邮箱 / 微信 / 手机号" required />
-              </label>
             </div>
             <button className="mt-5 inline-flex min-h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-full border-0 bg-[#151615] px-4 text-[11px] font-bold text-white transition hover:bg-[#5557e8]" type="submit"><Send className="size-4" /> 生成定制需求</button>
             {requestSummary && (
@@ -431,24 +424,6 @@ function HomePage({ cases }: Pick<SiteContentProps, 'cases'>) {
               </div>
             )}
           </form>
-        </div>
-      </section>
-
-      <section className="border-t border-[#deded7] bg-[#f6f6f2] py-14 sm:py-20" id="contact" aria-labelledby="contact-title">
-        <div className={`${shell} grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(340px,.85fr)] lg:items-end`}>
-          <div>
-            <p className="m-0 flex items-center gap-2 font-mono text-[9px] font-bold tracking-[0.12em] text-[#5557e8]"><UserRound className="size-3.5" /> CONTACT</p>
-            <h2 className="mt-3 mb-0 text-[32px] tracking-[-0.055em] sm:text-[44px]" id="contact-title">和我聊聊你的项目。</h2>
-            <p className="mt-4 mb-0 max-w-[650px] text-[14px] leading-[1.9] text-[#666962]">我会从目标、用户和交付边界开始，帮你把想法收敛成可以落地的项目方案。</p>
-          </div>
-          <div className="rounded-[22px] border border-[#d9dad3] bg-white p-5 shadow-[0_16px_40px_rgba(21,22,21,.06)] sm:p-6">
-            <div className="flex items-start gap-4"><span className="grid size-11 place-items-center rounded-2xl bg-[#151615] text-[#d9ff63] text-lg font-semibold">陈</span><div><h3 className="m-0 text-lg tracking-[-0.04em]">{profile.name}</h3><p className="mt-1 mb-0 text-[11px] text-[#777a74]">{profile.role}</p></div></div>
-            <div className="mt-5 space-y-3 border-t border-[#ecece7] pt-5 text-[11px] text-[#555852]">
-              <div className="flex items-center gap-3"><MapPin className="size-4 shrink-0 text-[#5557e8]" /> {profile.location}</div>
-              {profile.email ? <a className="flex items-center gap-3 text-[#555852] no-underline hover:text-[#5557e8]" href={`mailto:${profile.email}`}><Mail className="size-4 shrink-0 text-[#5557e8]" /> {profile.email}</a> : <div className="flex items-center gap-3 text-[#858880]"><Mail className="size-4 shrink-0 text-[#5557e8]" /> 邮箱联系方式待配置</div>}
-            </div>
-            <Link className="mt-5 flex min-h-11 items-center justify-center gap-2 rounded-full bg-[#151615] px-4 text-[10px] font-bold text-white no-underline transition hover:bg-[#5557e8]" to="/#customize"><Sparkles className="size-4 text-[#d9ff63]" /> 填写定制需求</Link>
-          </div>
         </div>
       </section>
 
