@@ -1,13 +1,19 @@
 import {
   ArrowRight,
   Check,
+  CheckCircle2,
+  Clipboard,
   Code2,
   Command,
   Compass,
   GraduationCap,
+  Mail,
+  MapPin,
   Search,
+  Send,
   SlidersHorizontal,
   Sparkles,
+  UserRound,
   X,
 } from 'lucide-react'
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
@@ -24,6 +30,7 @@ import {
 import { CaseDetail } from './components/ProjectDetail'
 import { CaseCard } from './components/RepositoryCard'
 import { loadSiteContent, type SiteContent } from './data/content'
+import { profile } from './data/profile'
 import type { GraduationCase } from './data/projects'
 import { getResourceBySlug, type ResourcePost } from './data/resources'
 
@@ -173,13 +180,18 @@ function SiteHeader() {
 
         <nav className="ml-auto hidden items-center gap-1 md:flex" aria-label="主导航">
           <Link className="rounded-full px-3.5 py-2 text-[12px] font-semibold text-[#5f625d] no-underline transition hover:bg-white hover:text-[#151615]" to="/#projects">发现项目</Link>
+          <Link className="rounded-full px-3.5 py-2 text-[12px] font-semibold text-[#5f625d] no-underline transition hover:bg-white hover:text-[#151615]" to="/#customize">定制项目</Link>
+          <Link className="inline-flex items-center gap-1.5 rounded-full border border-[#d6d7d0] bg-white px-3.5 py-2 text-[12px] font-semibold text-[#151615] no-underline transition hover:border-[#5557e8] hover:text-[#5557e8]" to="/#contact"><Mail className="size-3.5" /> 我的联系方式</Link>
         </nav>
 
-        <Link className="ml-auto inline-flex min-h-9 items-center gap-2 rounded-full bg-[#151615] px-4 text-[11px] font-bold text-white no-underline transition hover:bg-[#5557e8] md:ml-2" to="/#smart-search">
-          <Sparkles className="size-3.5 text-[#d9ff63]" aria-hidden="true" />
-          智能检索
-          <span className="hidden items-center gap-0.5 rounded bg-white/10 px-1.5 py-0.5 font-mono text-[8px] text-white/60 sm:inline-flex"><Command className="size-2.5" /> K</span>
-        </Link>
+        <div className="ml-auto flex items-center gap-2 md:ml-2">
+          <Link className="grid size-9 place-items-center rounded-full border border-[#d6d7d0] bg-white text-[#151615] no-underline transition hover:border-[#5557e8] hover:text-[#5557e8] md:hidden" to="/#contact" aria-label="我的联系方式"><Mail className="size-4" /></Link>
+          <Link className="inline-flex min-h-9 items-center gap-2 rounded-full bg-[#151615] px-4 text-[11px] font-bold text-white no-underline transition hover:bg-[#5557e8]" to="/#smart-search">
+            <Sparkles className="size-3.5 text-[#d9ff63]" aria-hidden="true" />
+            智能检索
+            <span className="hidden items-center gap-0.5 rounded bg-white/10 px-1.5 py-0.5 font-mono text-[8px] text-white/60 sm:inline-flex"><Command className="size-2.5" /> K</span>
+          </Link>
+        </div>
       </div>
     </header>
   )
@@ -191,6 +203,8 @@ function HomePage({ cases }: Pick<SiteContentProps, 'cases'>) {
   const [category, setCategory] = useState(searchParams.get('category') ?? '全部方向')
   const [technology, setTechnology] = useState(searchParams.get('tech') ?? '全部技术')
   const [sort, setSort] = useState<'relevance' | 'latest'>('relevance')
+  const [requestSummary, setRequestSummary] = useState('')
+  const [copied, setCopied] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const deferredQuery = useDeferredValue(query)
   const queryAnalysis = useMemo(() => getQuerySignals(deferredQuery), [deferredQuery])
@@ -252,8 +266,9 @@ function HomePage({ cases }: Pick<SiteContentProps, 'cases'>) {
 
   return (
     <main>
-      <section className="border-b border-[#deded7] bg-[#f6f6f2] py-8 sm:py-12">
-        <div className={`${shell} scroll-mt-28`} id="smart-search">
+      <section className={`${shell} scroll-mt-24 py-11 sm:py-16`} id="projects" aria-labelledby="projects-title">
+        <div className="sticky top-[68px] z-40 -mx-[14px] bg-[#f6f6f2] px-[14px] py-3 sm:-mx-[24px] sm:px-[24px]">
+          <div className="scroll-mt-28" id="smart-search">
           <form
             className="mx-auto max-w-[860px] rounded-[20px] border border-[#cfd0c9] bg-white p-2 shadow-[0_18px_50px_rgba(21,22,21,.09)] transition focus-within:border-[#5557e8] focus-within:shadow-[0_20px_60px_rgba(85,87,232,.14)]"
             onSubmit={(event) => {
@@ -289,16 +304,14 @@ function HomePage({ cases }: Pick<SiteContentProps, 'cases'>) {
               </div>
             )}
           </form>
-          <div className="mx-auto mt-3 flex max-w-[860px] flex-wrap items-center gap-2">
+          </div>
+        </div>
+        <div className="mx-auto flex max-w-[860px] flex-wrap items-center gap-2">
             <span className="font-mono text-[8px] tracking-[0.08em] text-[#999c95]">试试</span>
             {quickSearches.map((item) => (
               <button className="cursor-pointer rounded-full border border-[#deded7] bg-transparent px-2.5 py-1.5 text-[10px] text-[#666962] transition hover:border-[#5557e8] hover:bg-white hover:text-[#5557e8]" key={item} onClick={() => chooseSearch(item)} type="button">{item}</button>
             ))}
-          </div>
         </div>
-      </section>
-
-      <section className={`${shell} scroll-mt-24 py-11 sm:py-16`} id="projects" aria-labelledby="projects-title">
         <div className="flex flex-wrap items-end justify-between gap-5">
           <div>
             <p className="m-0 flex items-center gap-2 font-mono text-[9px] font-bold tracking-[0.12em] text-[#5557e8]"><Compass className="size-3.5" /> PROJECT LIBRARY</p>
@@ -357,6 +370,86 @@ function HomePage({ cases }: Pick<SiteContentProps, 'cases'>) {
             </div>
           </div>
         )}
+      </section>
+
+      <section className="border-t border-[#deded7] bg-white py-14 sm:py-20" id="customize" aria-labelledby="customize-title">
+        <div className={`${shell} grid gap-10 lg:grid-cols-[minmax(0,1.05fr)_minmax(360px,.95fr)] lg:items-start`}>
+          <div>
+            <p className="m-0 flex items-center gap-2 font-mono text-[9px] font-bold tracking-[0.12em] text-[#5557e8]"><Sparkles className="size-3.5" /> PROJECT CUSTOMIZER</p>
+            <h2 className="mt-3 mb-0 max-w-[680px] text-[34px] leading-[1.08] tracking-[-0.06em] sm:text-[48px]" id="customize-title">从你的需求出发，定制一套真正能跑的项目。</h2>
+            <p className="mt-5 mb-0 max-w-[620px] text-[14px] leading-[1.9] text-[#666962]">不确定选题、技术栈或功能边界？填写几项关键信息，先生成一份清晰的项目需求摘要，再带着它开始沟通。</p>
+            <div className="mt-7 flex flex-wrap gap-2">
+              {['选题拆解', '技术栈适配', '功能规划', '论文与答辩思路'].map((item) => <span className="rounded-full border border-[#deded7] bg-[#f6f6f2] px-3 py-2 text-[10px] font-semibold text-[#555852]" key={item}>{item}</span>)}
+            </div>
+          </div>
+
+          <form
+            className="rounded-[24px] border border-[#d9dad3] bg-[#f6f6f2] p-5 shadow-[0_20px_55px_rgba(21,22,21,.08)] sm:p-7"
+            onSubmit={(event) => {
+              event.preventDefault()
+              const data = new FormData(event.currentTarget)
+              const summary = [
+                `项目方向：${String(data.get('direction') ?? '')}`,
+                `期望技术：${String(data.get('technology') ?? '')}`,
+                `需求描述：${String(data.get('brief') ?? '')}`,
+                `联系我：${String(data.get('contact') ?? '')}`,
+              ].join('\n')
+              setRequestSummary(summary)
+              setCopied(false)
+            }}
+          >
+            <div className="flex items-center gap-3"><span className="grid size-10 place-items-center rounded-xl bg-[#151615] text-[#d9ff63]"><Clipboard className="size-4" /></span><div><p className="m-0 font-mono text-[8px] tracking-[0.1em] text-[#858880]">START WITH A BRIEF</p><h3 className="mt-1 mb-0 text-lg tracking-[-0.035em]">项目定制需求</h3></div></div>
+            <div className="mt-6 grid gap-4">
+              <label className="grid gap-2 text-[10px] font-semibold text-[#555852]">项目方向
+                <select className="min-h-11 rounded-xl border border-[#d6d7d0] bg-white px-3 text-[12px] font-normal text-[#151615] outline-none focus:border-[#5557e8]" defaultValue="还没想好" name="direction">
+                  <option>还没想好</option><option>推荐系统</option><option>业务管理平台</option><option>数据可视化</option><option>AI 应用</option>
+                </select>
+              </label>
+              <label className="grid gap-2 text-[10px] font-semibold text-[#555852]">期望技术
+                <input className="min-h-11 rounded-xl border border-[#d6d7d0] bg-white px-3 text-[12px] font-normal text-[#151615] outline-none placeholder:text-[#a0a29c] focus:border-[#5557e8]" name="technology" placeholder="例如：React + Go + SQLite" />
+              </label>
+              <label className="grid gap-2 text-[10px] font-semibold text-[#555852]">你想解决什么问题？
+                <textarea className="min-h-24 resize-y rounded-xl border border-[#d6d7d0] bg-white px-3 py-3 text-[12px] font-normal leading-[1.7] text-[#151615] outline-none placeholder:text-[#a0a29c] focus:border-[#5557e8]" name="brief" placeholder="描述应用场景、核心功能或学校要求…" required />
+              </label>
+              <label className="grid gap-2 text-[10px] font-semibold text-[#555852]">你的联系方式
+                <input className="min-h-11 rounded-xl border border-[#d6d7d0] bg-white px-3 text-[12px] font-normal text-[#151615] outline-none placeholder:text-[#a0a29c] focus:border-[#5557e8]" name="contact" placeholder="邮箱 / 微信 / 手机号" required />
+              </label>
+            </div>
+            <button className="mt-5 inline-flex min-h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-full border-0 bg-[#151615] px-4 text-[11px] font-bold text-white transition hover:bg-[#5557e8]" type="submit"><Send className="size-4" /> 生成定制需求</button>
+            {requestSummary && (
+              <div className="mt-5 rounded-2xl border border-[#cfe2d6] bg-[#f1fff5] p-4" role="status">
+                <div className="flex items-center gap-2 text-[11px] font-bold text-[#27734a]"><CheckCircle2 className="size-4" /> 需求摘要已生成</div>
+                <p className="mt-3 mb-0 whitespace-pre-line text-[11px] leading-[1.8] text-[#4d6255]">{requestSummary}</p>
+                <button className="mt-4 inline-flex cursor-pointer items-center gap-2 rounded-full border border-[#b9d9c4] bg-white px-3 py-2 text-[10px] font-semibold text-[#27734a] transition hover:border-[#27734a]" onClick={async () => {
+                  try {
+                    await navigator.clipboard.writeText(requestSummary)
+                    setCopied(true)
+                  } catch {
+                    setCopied(false)
+                  }
+                }} type="button"><Clipboard className="size-3.5" /> {copied ? '已复制，可发给我' : '复制需求摘要'}</button>
+              </div>
+            )}
+          </form>
+        </div>
+      </section>
+
+      <section className="border-t border-[#deded7] bg-[#f6f6f2] py-14 sm:py-20" id="contact" aria-labelledby="contact-title">
+        <div className={`${shell} grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(340px,.85fr)] lg:items-end`}>
+          <div>
+            <p className="m-0 flex items-center gap-2 font-mono text-[9px] font-bold tracking-[0.12em] text-[#5557e8]"><UserRound className="size-3.5" /> CONTACT</p>
+            <h2 className="mt-3 mb-0 text-[32px] tracking-[-0.055em] sm:text-[44px]" id="contact-title">和我聊聊你的项目。</h2>
+            <p className="mt-4 mb-0 max-w-[650px] text-[14px] leading-[1.9] text-[#666962]">我会从目标、用户和交付边界开始，帮你把想法收敛成可以落地的项目方案。</p>
+          </div>
+          <div className="rounded-[22px] border border-[#d9dad3] bg-white p-5 shadow-[0_16px_40px_rgba(21,22,21,.06)] sm:p-6">
+            <div className="flex items-start gap-4"><span className="grid size-11 place-items-center rounded-2xl bg-[#151615] text-[#d9ff63] text-lg font-semibold">陈</span><div><h3 className="m-0 text-lg tracking-[-0.04em]">{profile.name}</h3><p className="mt-1 mb-0 text-[11px] text-[#777a74]">{profile.role}</p></div></div>
+            <div className="mt-5 space-y-3 border-t border-[#ecece7] pt-5 text-[11px] text-[#555852]">
+              <div className="flex items-center gap-3"><MapPin className="size-4 shrink-0 text-[#5557e8]" /> {profile.location}</div>
+              {profile.email ? <a className="flex items-center gap-3 text-[#555852] no-underline hover:text-[#5557e8]" href={`mailto:${profile.email}`}><Mail className="size-4 shrink-0 text-[#5557e8]" /> {profile.email}</a> : <div className="flex items-center gap-3 text-[#858880]"><Mail className="size-4 shrink-0 text-[#5557e8]" /> 邮箱联系方式待配置</div>}
+            </div>
+            <Link className="mt-5 flex min-h-11 items-center justify-center gap-2 rounded-full bg-[#151615] px-4 text-[10px] font-bold text-white no-underline transition hover:bg-[#5557e8]" to="/#customize"><Sparkles className="size-4 text-[#d9ff63]" /> 填写定制需求</Link>
+          </div>
+        </div>
       </section>
 
     </main>
