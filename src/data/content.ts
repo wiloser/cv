@@ -1,9 +1,11 @@
 import type { GraduationCase } from './projects'
+import { quantDataUrl, type QuantMonitorData } from './quant'
 import type { ResourcePost } from './resources'
 
 export interface SiteContent {
   resources: ResourcePost[]
   cases: GraduationCase[]
+  quant: QuantMonitorData
 }
 
 async function fetchJson<T>(url: string): Promise<T> {
@@ -17,10 +19,11 @@ async function fetchJson<T>(url: string): Promise<T> {
 }
 
 export async function loadSiteContent(): Promise<SiteContent> {
-  const [resources, cases] = await Promise.all([
+  const [resources, cases, quant] = await Promise.all([
     fetchJson<ResourcePost[]>('/data/resources.json'),
     fetchJson<GraduationCase[]>('/data/projects.json'),
+    fetchJson<QuantMonitorData>(quantDataUrl),
   ])
 
-  return { resources, cases }
+  return { resources, cases, quant }
 }

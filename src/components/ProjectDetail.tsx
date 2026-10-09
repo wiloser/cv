@@ -24,7 +24,7 @@ export function CaseDetail({ cases }: CaseDetailProps) {
         <div className="rounded-[24px] border border-[#dadbd4] bg-white p-12 text-center">
           <p className="font-mono text-[9px] font-bold tracking-[0.12em] text-[#5557e8]">404 / PROJECT NOT FOUND</p>
           <h1 className="mt-3 text-3xl tracking-[-0.045em]">这个项目暂时找不到</h1>
-          <Link className="mt-7 inline-flex rounded-full bg-[#151615] px-5 py-3 text-[11px] font-semibold text-white no-underline" to="/#projects">返回项目库</Link>
+          <Link className="mt-7 inline-flex rounded-full bg-[#151615] px-5 py-3 text-[11px] font-semibold text-white no-underline" to="/graduation#projects">返回项目库</Link>
         </div>
       </main>
     )
@@ -34,7 +34,7 @@ export function CaseDetail({ cases }: CaseDetailProps) {
     <main>
       <section className="border-b border-[#deded7] bg-[#f6f6f2]">
         <div className={`${shell} py-8 sm:py-12`}>
-          <Link className="inline-flex items-center gap-2 rounded-full border border-[#deded7] bg-white px-3 py-2 text-[10px] font-semibold text-[#666962] no-underline transition hover:border-[#151615] hover:text-[#151615]" to="/#projects">
+          <Link className="inline-flex items-center gap-2 rounded-full border border-[#deded7] bg-white px-3 py-2 text-[10px] font-semibold text-[#666962] no-underline transition hover:border-[#151615] hover:text-[#151615]" to="/graduation#projects">
             <ArrowLeft className="size-3.5" /> 返回项目库
           </Link>
 
@@ -46,7 +46,6 @@ export function CaseDetail({ cases }: CaseDetailProps) {
                 <span className="inline-flex items-center gap-1.5 rounded-full border border-[#deded7] bg-white px-2.5 py-1.5 text-[#777a74]"><span className="size-1.5 rounded-full bg-[#63ce8f]" /> 已运行验证</span>
               </div>
               <h1 className="mt-6 mb-0 text-[40px] leading-[1.08] font-semibold tracking-[-0.065em] sm:text-[60px]">{item.title}</h1>
-              <p className="mt-5 mb-0 max-w-[650px] text-[15px] leading-[1.8] text-[#666962]">{item.tagline}</p>
 
               <div className="mt-6 flex flex-wrap gap-2">
                 {[item.language, ...item.technologies].filter((value, index, array) => array.indexOf(value) === index).map((technology) => (
@@ -75,13 +74,12 @@ export function CaseDetail({ cases }: CaseDetailProps) {
       <div className={`${shell} grid items-start gap-10 py-11 sm:py-16 lg:grid-cols-[minmax(0,1fr)_330px]`}>
         <article className="min-w-0">
           <section className="rounded-[20px] bg-[#eeefff] p-6 sm:p-8">
-            <p className="m-0 font-mono text-[9px] font-bold tracking-[0.12em] text-[#5557e8]">PROJECT OVERVIEW</p>
             <h2 className="mt-3 mb-0 text-[27px] tracking-[-0.045em]">项目概览</h2>
             <p className="mt-4 mb-0 text-[14px] leading-[1.95] text-[#555852]">{item.description}</p>
           </section>
 
           <section className="border-b border-[#deded7] py-10 sm:py-12">
-            <div className="flex items-center gap-3"><span className="grid size-8 place-items-center rounded-lg bg-[#151615] font-mono text-[8px] text-[#d9ff63]">01</span><div><p className="m-0 font-mono text-[8px] font-bold tracking-[0.1em] text-[#777a74]">FEATURE MAP</p><h2 className="mt-1 mb-0 text-[25px] tracking-[-0.04em]">功能模块</h2></div></div>
+            <div className="flex items-center gap-3"><h2 className="mt-1 mb-0 text-[25px] tracking-[-0.04em]">功能模块</h2></div>
             <div className="mt-6 grid gap-3 sm:grid-cols-2">
               {item.features.map((feature, index) => (
                 <div className="rounded-[16px] border border-[#deded7] bg-white p-5" key={feature}>
@@ -93,7 +91,7 @@ export function CaseDetail({ cases }: CaseDetailProps) {
           </section>
 
           <section className="border-b border-[#deded7] py-10 sm:py-12">
-            <div className="flex items-center gap-3"><span className="grid size-8 place-items-center rounded-lg bg-[#151615] font-mono text-[8px] text-[#d9ff63]">02</span><div><p className="m-0 font-mono text-[8px] font-bold tracking-[0.1em] text-[#777a74]">IMPLEMENTATION</p><h2 className="mt-1 mb-0 text-[25px] tracking-[-0.04em]">技术亮点</h2></div></div>
+            <div className="flex items-center gap-3"><h2 className="mt-1 mb-0 text-[25px] tracking-[-0.04em]">技术亮点</h2></div>
             <div className="mt-6 space-y-3">
               {item.highlights.map((highlight, index) => (
                 <div className="flex items-start gap-4 rounded-[16px] border border-[#deded7] bg-white p-5" key={highlight}>
@@ -105,7 +103,7 @@ export function CaseDetail({ cases }: CaseDetailProps) {
           </section>
 
           <section className="py-10 sm:py-12">
-            <div className="flex items-center gap-3"><span className="grid size-8 place-items-center rounded-lg bg-[#151615] font-mono text-[8px] text-[#d9ff63]">03</span><div><p className="m-0 font-mono text-[8px] font-bold tracking-[0.1em] text-[#777a74]">ENVIRONMENT</p><h2 className="mt-1 mb-0 text-[25px] tracking-[-0.04em]">运行环境</h2></div></div>
+            <div className="flex items-center gap-3"><h2 className="mt-1 mb-0 text-[25px] tracking-[-0.04em]">运行环境</h2></div>
             <ul className="mt-6 grid gap-2 p-0 sm:grid-cols-2">
               {item.environment.map((environment) => (
                 <li className="flex list-none items-center gap-3 rounded-xl border border-[#deded7] bg-white px-4 py-3.5 text-[11px] text-[#555852]" key={environment}><span className="size-1.5 shrink-0 rounded-full bg-[#63ce8f]" />{environment}</li>
@@ -115,7 +113,7 @@ export function CaseDetail({ cases }: CaseDetailProps) {
         </article>
 
         <aside className="rounded-[22px] border border-[#d9dad3] bg-white p-5 shadow-[0_18px_45px_rgba(20,22,20,.08)] lg:sticky lg:top-24 sm:p-6">
-          <div className="flex items-center gap-3"><span className="grid size-10 place-items-center rounded-xl bg-[#151615] text-[#d9ff63]"><PackageOpen className="size-5" /></span><div><p className="m-0 font-mono text-[8px] tracking-[0.1em] text-[#858880]">PROJECT PACKAGE</p><h2 className="mt-1 mb-0 text-lg tracking-[-0.035em]">项目资料包</h2></div></div>
+          <div className="flex items-center gap-3"><span className="grid size-10 place-items-center rounded-xl bg-[#151615] text-[#d9ff63]"><PackageOpen className="size-5" /></span><div><h2 className="mt-1 mb-0 text-lg tracking-[-0.035em]">项目资料包</h2></div></div>
           <dl className="mt-5 mb-0 border-y border-[#ecece7] py-2">
             {[
               ['文件类型', item.downloadFormat],

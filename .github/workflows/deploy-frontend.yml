@@ -1,4 +1,4 @@
-name: Deploy frontend
+name: Deploy frontend and Go service
 
 on:
   push:
@@ -27,6 +27,12 @@ jobs:
           node-version: 22
           cache: npm
 
+      - name: Configure Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: quant-service/go.mod
+          cache-dependency-path: quant-service/go.sum
+
       - name: Install dependencies
         run: npm ci
 
@@ -34,12 +40,27 @@ jobs:
         run: npm run lint --if-present
 
       - name: Build frontend
+        env:
+          VITE_QUANT_MONITOR_URL: /api/quant/monitor
+          VITE_QUANT_SYNC_URL: /api/quant/sync
+          VITE_QUANT_OPTIMIZE_URL: /api/quant/optimize
         run: npm run build
+
+      - name: Build Go quant service
+        shell: bash
+        run: |
+          mkdir -p dist
+          cd quant-service
+          CGO_ENABLED=1 GOOS=linux GOARCH=amd64 \
+            go build -trimpath -ldflags='-s -w' \
+            -o ../dist/quant-service ./cmd/quant-service
 
       - name: Verify build output
         run: |
           test -s dist/client/index.html
+          test -s dist/quant-service
           echo "dist/client/index.html exists"
+          echo "dist/quant-service exists"
           find dist/client -maxdepth 2 -type f | head -30
 
       - name: Configure SSH
@@ -66,6 +87,35 @@ jobs:
             "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}" \
             "echo 'SSH connection successful'"
 
+      - name: Check Go service port allocation
+        shell: bash
+        env:
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+        run: |
+          ssh \
+            -i "$HOME/.ssh/id_ed25519" \
+            -o IdentitiesOnly=yes \
+            "$DEPLOY_USER@$DEPLOY_HOST" \
+            "bash -s" <<'REMOTE'
+          set -euo pipefail
+          port=18188
+          listeners="$(sudo -n ss -H -ltnp "sport = :${port}")"
+          if [[ -n "$listeners" ]]; then
+            current_exec="$(sudo -n systemctl show -p ExecStart --value \
+              quant-service.service 2>/dev/null || true)"
+            if sudo -n systemctl is-active --quiet quant-service.service && \
+              [[ "$current_exec" == *"/opt/1panel/apps/codes123/quant-service/quant-service"* ]]; then
+              echo "Port ${port} is already owned by quant-service"
+              exit 0
+            fi
+            sudo -n ss -ltnp "sport = :${port}" >&2 || true
+            echo "Port ${port} is occupied by another service; refusing deployment" >&2
+            exit 1
+          fi
+          echo "Port ${port} is available for quant-service"
+          REMOTE
+
       - name: Deploy frontend
         shell: bash
         run: |
@@ -80,10 +130,87 @@ jobs:
 
       - name: Verify deployment
         shell: bash
+        env:
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
         run: |
           ssh \
             -i "$HOME/.ssh/id_ed25519" \
             -o IdentitiesOnly=yes \
-            "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}" \
+            "$DEPLOY_USER@$DEPLOY_HOST" \
             "test -s /opt/1panel/www/sites/codes123/index/index.html &&
              echo 'Deployment successful'"
+
+      - name: Upload Go service artifacts
+        shell: bash
+        env:
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+        run: |
+          scp \
+            -i "$HOME/.ssh/id_ed25519" \
+            -o IdentitiesOnly=yes \
+            dist/quant-service \
+            "$DEPLOY_USER@$DEPLOY_HOST:quant-service-$GITHUB_SHA"
+
+          scp \
+            -i "$HOME/.ssh/id_ed25519" \
+            -o IdentitiesOnly=yes \
+            quant-service/deploy/quant-service.service \
+            "$DEPLOY_USER@$DEPLOY_HOST:quant-service.service-$GITHUB_SHA"
+
+      - name: Install and restart Go service
+        shell: bash
+        env:
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+        run: |
+          ssh \
+            -i "$HOME/.ssh/id_ed25519" \
+            -o IdentitiesOnly=yes \
+            "$DEPLOY_USER@$DEPLOY_HOST" \
+            "bash -s -- '$GITHUB_SHA'" <<'REMOTE'
+          set -euo pipefail
+          release_id="$1"
+          app_dir=/opt/1panel/apps/codes123/quant-service
+          data_dir=/var/lib/quant-service/data
+          binary_upload="$HOME/quant-service-${release_id}"
+          unit_upload="$HOME/quant-service.service-${release_id}"
+          trap 'rm -f "$binary_upload" "$unit_upload"' EXIT
+
+          if ! id -u quant-service >/dev/null 2>&1; then
+            sudo -n useradd --system --home-dir /var/lib/quant-service \
+              --shell /usr/sbin/nologin quant-service
+          fi
+
+          sudo -n install -d -o root -g root -m 0755 "$app_dir"
+          sudo -n install -d -o root -g root -m 0750 /etc/codes123
+          sudo -n install -d -o quant-service -g quant-service -m 0750 \
+            /var/lib/quant-service "$data_dir"
+          sudo -n install -o root -g root -m 0755 "$binary_upload" \
+            "$app_dir/quant-service"
+          sudo -n install -o root -g root -m 0644 "$unit_upload" \
+            /etc/systemd/system/quant-service.service
+
+          sudo -n systemctl daemon-reload
+          sudo -n systemctl enable quant-service.service
+          sudo -n systemctl restart quant-service.service
+          sudo -n systemctl is-active --quiet quant-service.service
+
+          for attempt in $(seq 1 60); do
+            if curl --silent --fail \
+              http://127.0.0.1:18188/healthz >/dev/null; then
+              echo "Go quant service is healthy"
+              exit 0
+            fi
+            if ! sudo -n systemctl is-active --quiet quant-service.service; then
+              sudo -n journalctl -u quant-service.service -n 60 --no-pager
+              exit 1
+            fi
+            sleep 2
+          done
+
+          sudo -n journalctl -u quant-service.service -n 60 --no-pager
+          echo "Go quant service did not become healthy in time" >&2
+          exit 1
+          REMOTE

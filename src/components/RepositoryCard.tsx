@@ -136,7 +136,7 @@ export function CaseCard({ item, matchReasons = [] }: CaseCardProps) {
         </div>
 
         <h3 className="mt-4 mb-0 text-[21px] leading-[1.35] font-semibold tracking-[-0.045em] sm:text-[23px]">
-          <Link className="text-[#151615] no-underline transition group-hover:text-[#5557e8]" to={`/cases/${item.name}`}>{item.title}</Link>
+          <Link className="text-[#151615] no-underline transition group-hover:text-[#5557e8]" to={`/graduation/cases/${item.name}`}>{item.title}</Link>
         </h3>
         <p className="mt-2.5 mb-0 text-[12px] leading-[1.75] text-[#666962]">{item.tagline}</p>
 
@@ -154,7 +154,7 @@ export function CaseCard({ item, matchReasons = [] }: CaseCardProps) {
         )}
 
         <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-[#ecece7] pt-4">
-          <Link className="inline-flex min-h-9 items-center gap-1.5 rounded-full bg-[#151615] px-4 text-[10px] font-bold text-white no-underline transition hover:bg-[#5557e8]" to={`/cases/${item.name}`}>
+          <Link className="inline-flex min-h-9 items-center gap-1.5 rounded-full bg-[#151615] px-4 text-[10px] font-bold text-white no-underline transition hover:bg-[#5557e8]" to={`/graduation/cases/${item.name}`}>
             查看项目 <ArrowUpRight className="size-3.5" />
           </Link>
           <a className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-[#d6d7d0] px-3.5 text-[10px] font-bold text-[#555852] no-underline transition hover:border-[#151615] hover:text-[#151615]" href={item.deploymentUrl} target="_blank" rel="noopener noreferrer">

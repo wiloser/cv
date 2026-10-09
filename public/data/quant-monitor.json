@@ -1,0 +1,157 @@
+{
+  "mode": "demo",
+  "updatedAt": "2026-09-28T06:10:00+08:00",
+  "nextSyncAt": "2026-09-29T06:00:00+08:00",
+  "syncSchedule": "每日 06:00 自动同步",
+  "sourceNote": "当前为演示数据。接入真实数据源时，将此文件替换为定时任务产出的同结构 API 响应。",
+  "metrics": [
+    {
+      "label": "今日采集记录",
+      "value": "128.46 万",
+      "change": "+8.4%",
+      "direction": "up",
+      "note": "较昨日"
+    },
+    {
+      "label": "处理成功率",
+      "value": "99.3%",
+      "change": "+0.6%",
+      "direction": "up",
+      "note": "近 7 日均值"
+    },
+    {
+      "label": "数据覆盖率",
+      "value": "96.8%",
+      "change": "-0.8%",
+      "direction": "down",
+      "note": "较昨日"
+    },
+    {
+      "label": "待处理异常",
+      "value": "12",
+      "change": "-4",
+      "direction": "down",
+      "note": "较昨日"
+    }
+  ],
+  "trend": [
+    { "date": "09.01", "value": 68.4, "secondary": 65.9 },
+    { "date": "09.02", "value": 69.1, "secondary": 66.3 },
+    { "date": "09.03", "value": 70.6, "secondary": 67.2 },
+    { "date": "09.04", "value": 69.8, "secondary": 67.8 },
+    { "date": "09.05", "value": 71.5, "secondary": 68.4 },
+    { "date": "09.06", "value": 72.1, "secondary": 68.9 },
+    { "date": "09.07", "value": 70.9, "secondary": 69.2 },
+    { "date": "09.08", "value": 73.8, "secondary": 70.4 },
+    { "date": "09.09", "value": 74.6, "secondary": 70.9 },
+    { "date": "09.10", "value": 73.7, "secondary": 71.2 },
+    { "date": "09.11", "value": 75.4, "secondary": 72.1 },
+    { "date": "09.12", "value": 76.8, "secondary": 72.9 },
+    { "date": "09.13", "value": 77.2, "secondary": 73.8 },
+    { "date": "09.14", "value": 76.4, "secondary": 74.1 },
+    { "date": "09.15", "value": 78.9, "secondary": 75.4 },
+    { "date": "09.16", "value": 79.6, "secondary": 76.3 },
+    { "date": "09.17", "value": 78.5, "secondary": 76.8 },
+    { "date": "09.18", "value": 80.4, "secondary": 77.5 },
+    { "date": "09.19", "value": 81.1, "secondary": 78.2 },
+    { "date": "09.20", "value": 80.2, "secondary": 78.9 },
+    { "date": "09.21", "value": 82.5, "secondary": 80.1 },
+    { "date": "09.22", "value": 83.1, "secondary": 80.8 },
+    { "date": "09.23", "value": 84.6, "secondary": 81.7 },
+    { "date": "09.24", "value": 83.9, "secondary": 82.4 },
+    { "date": "09.25", "value": 86.2, "secondary": 83.5 },
+    { "date": "09.26", "value": 88.4, "secondary": 85.1 },
+    { "date": "09.27", "value": 89.8, "secondary": 86.6 },
+    { "date": "09.28", "value": 91.4, "secondary": 87.9 }
+  ],
+  "sources": [
+    {
+      "name": "业务行为日志",
+      "type": "内部 API",
+      "status": "healthy",
+      "lastSync": "06:08",
+      "records": "486,120",
+      "coverage": "99.6%",
+      "latency": "1.2 min"
+    },
+    {
+      "name": "交易流水",
+      "type": "数据库快照",
+      "status": "healthy",
+      "lastSync": "06:10",
+      "records": "372,844",
+      "coverage": "98.9%",
+      "latency": "2.4 min"
+    },
+    {
+      "name": "业务工单",
+      "type": "Webhook",
+      "status": "warning",
+      "lastSync": "06:18",
+      "records": "215,902",
+      "coverage": "94.2%",
+      "latency": "18.0 min"
+    },
+    {
+      "name": "外部开放数据",
+      "type": "第三方 API",
+      "status": "healthy",
+      "lastSync": "06:09",
+      "records": "209,754",
+      "coverage": "95.8%",
+      "latency": "4.7 min"
+    }
+  ],
+  "quality": [
+    { "label": "完整性", "value": 98.8, "color": "#5557e8" },
+    { "label": "有效性", "value": 97.4, "color": "#63ce8f" },
+    { "label": "及时性", "value": 93.6, "color": "#d9a441" },
+    { "label": "一致性", "value": 96.9, "color": "#151615" }
+  ],
+  "alerts": [
+    {
+      "level": "warning",
+      "title": "业务工单数据延迟 18 分钟",
+      "description": "已自动重试 2 次，当前保留上一批有效快照。",
+      "time": "08:42"
+    },
+    {
+      "level": "info",
+      "title": "今日数据窗口已完成",
+      "description": "4 个数据源完成拉取，标准化任务已全部结束。",
+      "time": "06:21"
+    },
+    {
+      "level": "critical",
+      "title": "昨日有 12 条记录待人工复核",
+      "description": "异常集中在字段缺失和时间戳格式不一致。",
+      "time": "昨日"
+    }
+  ],
+  "syncRuns": [
+    {
+      "time": "06:00",
+      "label": "拉取数据源",
+      "status": "done",
+      "detail": "4 / 4 个数据源响应正常"
+    },
+    {
+      "time": "06:12",
+      "label": "标准化与去重",
+      "status": "done",
+      "detail": "处理 128.46 万条记录"
+    },
+    {
+      "time": "06:18",
+      "label": "指标计算",
+      "status": "done",
+      "detail": "生成 24 个监测指标"
+    },
+    {
+      "time": "06:21",
+      "label": "看板发布",
+      "status": "done",
+      "detail": "快照已更新，可供前端读取"
+    }
+  ]
+}

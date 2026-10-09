@@ -1,17 +1,18 @@
 import {
+  Activity,
   ArrowRight,
   Check,
   CheckCircle2,
   Clipboard,
   Code2,
   Command,
-  Compass,
   GraduationCap,
   Search,
   Send,
   SlidersHorizontal,
   Sparkles,
   X,
+  UserRound,
 } from 'lucide-react'
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import {
@@ -25,9 +26,14 @@ import {
   useSearchParams,
 } from 'react-router-dom'
 import { CaseDetail } from './components/ProjectDetail'
+import { QuantOverviewPage } from './components/QuantOverviewPage'
+import { QuantAccountPage } from './components/QuantAccountPage'
+import { QuantMonitorPage } from './components/QuantMonitorPage'
 import { CaseCard } from './components/RepositoryCard'
+import { WorkspaceHub } from './components/WorkspaceHub'
 import { loadSiteContent, type SiteContent } from './data/content'
 import type { GraduationCase } from './data/projects'
+import type { QuantMonitorData } from './data/quant'
 import { getResourceBySlug, type ResourcePost } from './data/resources'
 
 const shell = 'mx-auto w-[calc(100%_-_28px)] max-w-[1280px] sm:w-[calc(100%_-_48px)]'
@@ -161,31 +167,38 @@ function ScrollManager() {
 }
 
 function SiteHeader() {
+  const { pathname } = useLocation()
+  const isGraduation = pathname.startsWith('/graduation') || pathname.startsWith('/cases') || pathname.startsWith('/projects') || pathname.startsWith('/resources')
+  const isQuant = pathname.startsWith('/quant')
+  const actionHref = isGraduation ? '/graduation#smart-search' : '/'
+  const actionLabel = isGraduation ? '智能检索' : '模块总览'
+
   return (
     <header className="sticky top-0 z-50 border-b border-[#deded7] bg-[#f6f6f2]/92 backdrop-blur-xl">
       <div className={`${shell} flex min-h-[68px] items-center gap-5`}>
-        <Link className="group inline-flex items-center gap-2.5 text-[#151615] no-underline" to="/" aria-label="毕设集首页">
+        <Link className="group inline-flex items-center gap-2.5 text-[#151615] no-underline" to="/" aria-label="项目工作台首页">
           <span className="grid size-9 place-items-center rounded-[10px] bg-[#151615] text-[#d9ff63] shadow-[inset_0_0_0_1px_rgba(255,255,255,.08)] transition group-hover:rotate-[-4deg] group-hover:bg-[#5557e8]" aria-hidden="true">
             <GraduationCap className="size-[19px]" />
           </span>
           <span>
-            <strong className="block text-[16px] leading-none tracking-[-0.04em]">毕设集</strong>
-            <span className="mt-1 block font-mono text-[7px] leading-none tracking-[0.16em] text-[#8a8c85]">PROJECT ATLAS</span>
+            <strong className="block text-[16px] leading-none tracking-[-0.04em]">项目工作台</strong>
           </span>
         </Link>
 
         <nav className="ml-auto hidden items-center gap-1 md:flex" aria-label="主导航">
-          <Link className="rounded-full px-3.5 py-2 text-[12px] font-semibold text-[#5f625d] no-underline transition hover:bg-white hover:text-[#151615]" to="/#projects">发现项目</Link>
-          <Link className="rounded-full px-3.5 py-2 text-[12px] font-semibold text-[#5f625d] no-underline transition hover:bg-white hover:text-[#151615]" to="/#customize">定制项目</Link>
+          <Link className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-[12px] font-semibold no-underline transition hover:bg-white hover:text-[#151615] ${isGraduation ? 'bg-white text-[#151615]' : 'text-[#5f625d]'}`} to="/graduation#projects"><GraduationCap className="size-3.5" /> 毕设集</Link>
+          <Link className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-[12px] font-semibold no-underline transition hover:bg-white hover:text-[#151615] ${isQuant ? 'bg-white text-[#151615]' : 'text-[#5f625d]'}`} to="/quant"><Activity className="size-3.5" /> 量化监测</Link>
+          {isQuant && <Link className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-[12px] font-semibold text-[#5f625d] no-underline transition hover:bg-white hover:text-[#151615]" to="/quant/account"><UserRound className="size-3.5" /> 账户与通知</Link>}
+          {isGraduation && <Link className="rounded-full px-3.5 py-2 text-[12px] font-semibold text-[#5f625d] no-underline transition hover:bg-white hover:text-[#151615]" to="/graduation#customize">定制项目</Link>}
           <span className="rounded-full border border-[#d6d7d0] bg-white px-3.5 py-2 text-[12px] font-semibold text-[#5557e8]">微信：_trees168</span>
         </nav>
 
         <div className="ml-auto flex items-center gap-2 md:ml-2">
           <span className="hidden rounded-full border border-[#d6d7d0] bg-white px-3 py-2 text-[10px] font-semibold text-[#5557e8] sm:inline-flex md:hidden">微信：_trees168</span>
-          <Link className="inline-flex min-h-9 items-center gap-2 rounded-full bg-[#151615] px-4 text-[11px] font-bold text-white no-underline transition hover:bg-[#5557e8]" to="/#smart-search">
-            <Sparkles className="size-3.5 text-[#d9ff63]" aria-hidden="true" />
-            智能检索
-            <span className="hidden items-center gap-0.5 rounded bg-white/10 px-1.5 py-0.5 font-mono text-[8px] text-white/60 sm:inline-flex"><Command className="size-2.5" /> K</span>
+          <Link className="inline-flex min-h-9 items-center gap-2 rounded-full bg-[#151615] px-4 text-[11px] font-bold text-white no-underline transition hover:bg-[#5557e8]" to={actionHref}>
+            {isGraduation ? <Sparkles className="size-3.5 text-[#d9ff63]" aria-hidden="true" /> : <Activity className="size-3.5 text-[#d9ff63]" aria-hidden="true" />}
+            {actionLabel}
+            {isGraduation && <span className="hidden items-center gap-0.5 rounded bg-white/10 px-1.5 py-0.5 font-mono text-[8px] text-white/60 sm:inline-flex"><Command className="size-2.5" /> K</span>}
           </Link>
         </div>
       </div>
@@ -310,7 +323,6 @@ function HomePage({ cases }: Pick<SiteContentProps, 'cases'>) {
         </div>
         <div className="flex flex-wrap items-end justify-between gap-5">
           <div>
-            <p className="m-0 flex items-center gap-2 font-mono text-[9px] font-bold tracking-[0.12em] text-[#5557e8]"><Compass className="size-3.5" /> PROJECT LIBRARY</p>
             <h2 className="mt-2 mb-0 text-[30px] tracking-[-0.055em] sm:text-[38px]" id="projects-title">
               {deferredQuery.trim() ? `“${deferredQuery}” 的匹配结果` : '探索全部毕设项目'}
             </h2>
@@ -371,9 +383,7 @@ function HomePage({ cases }: Pick<SiteContentProps, 'cases'>) {
       <section className="border-t border-[#deded7] bg-white py-14 sm:py-20" id="customize" aria-labelledby="customize-title">
         <div className={`${shell} grid gap-10 lg:grid-cols-[minmax(0,1.05fr)_minmax(360px,.95fr)] lg:items-start`}>
           <div>
-            <p className="m-0 flex items-center gap-2 font-mono text-[9px] font-bold tracking-[0.12em] text-[#5557e8]"><Sparkles className="size-3.5" /> PROJECT CUSTOMIZER</p>
             <h2 className="mt-3 mb-0 max-w-[680px] text-[34px] leading-[1.08] tracking-[-0.06em] sm:text-[48px]" id="customize-title">从你的需求出发，定制一套真正能跑的项目。</h2>
-            <p className="mt-5 mb-0 max-w-[620px] text-[14px] leading-[1.9] text-[#666962]">不确定选题、技术栈或功能边界？填写几项关键信息，先生成一份清晰的项目需求摘要，再带着它开始沟通。</p>
             <div className="mt-7 flex flex-wrap gap-2">
               {['选题拆解', '技术栈适配', '功能规划', '论文与答辩思路'].map((item) => <span className="rounded-full border border-[#deded7] bg-[#f6f6f2] px-3 py-2 text-[10px] font-semibold text-[#555852]" key={item}>{item}</span>)}
             </div>
@@ -394,7 +404,7 @@ function HomePage({ cases }: Pick<SiteContentProps, 'cases'>) {
               setCopied(false)
             }}
           >
-            <div className="flex items-center gap-3"><span className="grid size-10 place-items-center rounded-xl bg-[#151615] text-[#d9ff63]"><Clipboard className="size-4" /></span><div><p className="m-0 font-mono text-[8px] tracking-[0.1em] text-[#858880]">START WITH A BRIEF</p><h3 className="mt-1 mb-0 text-lg tracking-[-0.035em]">项目定制需求</h3></div></div>
+            <div className="flex items-center gap-3"><span className="grid size-10 place-items-center rounded-xl bg-[#151615] text-[#d9ff63]"><Clipboard className="size-4" /></span><div><h3 className="mt-1 mb-0 text-lg tracking-[-0.035em]">项目定制需求</h3></div></div>
             <div className="mt-6 grid gap-4">
               <label className="grid gap-2 text-[10px] font-semibold text-[#555852]">项目方向
                 <select className="min-h-11 rounded-xl border border-[#d6d7d0] bg-white px-3 text-[12px] font-normal text-[#151615] outline-none focus:border-[#5557e8]" defaultValue="还没想好" name="direction">
@@ -439,11 +449,11 @@ function ResourceDetail({ resources }: Pick<SiteContentProps, 'resources'>) {
     document.title = resource ? `${resource.title} · 毕设集` : '内容未找到 · 毕设集'
   }, [resource])
 
-  if (!resource) return <Navigate replace to="/" />
+  if (!resource) return <Navigate replace to="/graduation" />
 
   return (
     <main className={`${shell} py-9 pb-20 sm:py-12`}>
-      <Link className="inline-flex items-center gap-2 text-[11px] font-semibold text-[#666962] no-underline hover:text-[#5557e8]" to="/#projects"><ArrowRight className="size-4 rotate-180" /> 返回项目库</Link>
+      <Link className="inline-flex items-center gap-2 text-[11px] font-semibold text-[#666962] no-underline hover:text-[#5557e8]" to="/graduation#projects"><ArrowRight className="size-4 rotate-180" /> 返回项目库</Link>
       <article className="mx-auto mt-9 max-w-[900px]">
         <header className="border-b border-[#d5d6cf] pb-9">
           <div className="flex flex-wrap items-center gap-2 font-mono text-[9px] text-[#777a74]"><span className="rounded-full bg-[#d9ff63] px-2.5 py-1 font-bold text-[#151615]">{resource.category}</span><time>{resource.publishedAt}</time><span>·</span><span>{resource.readTime}</span></div>
@@ -469,18 +479,27 @@ function ResourceDetail({ resources }: Pick<SiteContentProps, 'resources'>) {
 
 function LegacyCaseRedirect() {
   const { slug } = useParams()
-  return <Navigate replace to={slug ? `/cases/${slug}` : '/#projects'} />
+  return <Navigate replace to={slug ? `/graduation/cases/${slug}` : '/graduation#projects'} />
+}
+
+function LegacyResourceRedirect() {
+  const { slug } = useParams()
+  return <Navigate replace to={slug ? `/graduation/resources/${slug}` : '/graduation'} />
+}
+
+function QuantDetailRoute({ initialData }: { initialData: QuantMonitorData }) {
+  const { symbol } = useParams()
+  return <QuantMonitorPage key={symbol ?? 'default'} initialData={initialData} routeSymbol={symbol} />
 }
 
 function SiteFooter() {
   return (
-    <footer className="border-t border-white/10 bg-[#151615] text-white">
+    <footer className="mt-auto border-t border-white/10 bg-[#151615] text-white">
       <div className={`${shell} flex flex-col gap-7 py-8 sm:flex-row sm:items-end sm:justify-between`}>
         <div>
-          <Link className="inline-flex items-center gap-2.5 text-white no-underline" to="/"><span className="grid size-8 place-items-center rounded-lg bg-[#d9ff63] text-[#151615]"><GraduationCap className="size-4" /></span><strong className="tracking-[-0.04em]">毕设集</strong></Link>
-          <p className="mt-3 mb-0 max-w-[520px] text-[10px] leading-[1.8] text-white/45">聚合可运行、可拆解、可扩展的毕业设计项目，为选题与实现提供真实参考。</p>
+          <Link className="inline-flex items-center gap-2.5 text-white no-underline" to="/"><span className="grid size-8 place-items-center rounded-lg bg-[#d9ff63] text-[#151615]"><GraduationCap className="size-4" /></span><strong className="tracking-[-0.04em]">项目工作台</strong></Link>
         </div>
-        <div className="font-mono text-[8px] leading-[1.8] text-white/35 sm:text-right"><p className="m-0">PROJECT ATLAS · SMART DISCOVERY</p><p className="m-0">© {new Date().getFullYear()} 毕设集</p></div>
+        <div className="font-mono text-[8px] leading-[1.8] text-white/35 sm:text-right"><p className="m-0">© {new Date().getFullYear()} 项目工作台</p></div>
       </div>
     </footer>
   )
@@ -506,17 +525,25 @@ function CodesApp() {
     return <main className={`${shell} grid min-h-screen place-items-center py-16 text-center`}><div><span className="mx-auto grid size-12 place-items-center rounded-2xl bg-[#151615] text-[#d9ff63]"><Code2 className="size-5 animate-pulse" /></span><p className="mt-4 font-mono text-[9px] tracking-[0.12em] text-[#777a74]">正在整理项目索引…</p></div></main>
   }
 
-  const { resources, cases } = content
+  const { resources, cases, quant } = content
 
   return (
-    <div className="min-h-screen bg-[#f6f6f2] text-[#151615] selection:bg-[#d9ff63] selection:text-[#151615]">
+    <div className="flex min-h-screen flex-col bg-[#f6f6f2] text-[#151615] selection:bg-[#d9ff63] selection:text-[#151615]">
       <ScrollManager />
       <SiteHeader />
       <Routes>
-        <Route index element={<HomePage cases={cases} />} />
-        <Route path="resources/:slug" element={<ResourceDetail resources={resources} />} />
-        <Route path="cases" element={<Navigate replace to="/#projects" />} />
-        <Route path="cases/:slug" element={<CaseDetail cases={cases} />} />
+        <Route index element={<WorkspaceHub projectCount={cases.length} resourceCount={resources.length} />} />
+        <Route path="graduation" element={<HomePage cases={cases} />} />
+        <Route path="graduation/resources/:slug" element={<ResourceDetail resources={resources} />} />
+        <Route path="graduation/cases/:slug" element={<CaseDetail cases={cases} />} />
+        <Route path="quant" element={<QuantOverviewPage initialData={quant} />} />
+        <Route path="quant/account" element={<QuantAccountPage />} />
+        <Route path="quant/:symbol" element={<QuantDetailRoute initialData={quant} />} />
+        <Route path="quant-monitor" element={<Navigate replace to="/quant" />} />
+        <Route path="resources/:slug" element={<LegacyResourceRedirect />} />
+        <Route path="resources" element={<LegacyResourceRedirect />} />
+        <Route path="cases" element={<Navigate replace to="/graduation#projects" />} />
+        <Route path="cases/:slug" element={<LegacyCaseRedirect />} />
         <Route path="projects" element={<LegacyCaseRedirect />} />
         <Route path="projects/:slug" element={<LegacyCaseRedirect />} />
         <Route path="*" element={<Navigate replace to="/" />} />
