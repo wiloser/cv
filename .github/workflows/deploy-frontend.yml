@@ -64,7 +64,6 @@ jobs:
           tar -czf release/frontend.tar.gz -C dist/client .
           cp quant-service/deploy/remote-deploy.sh release/remote-deploy.sh
           cp quant-service/deploy/start-quant-service.sh release/start-quant-service.sh
-          cp quant-service/.env.example release/quant-service.env.example
           chmod 755 release/quant-service release/remote-deploy.sh release/start-quant-service.sh
           test -s release/quant-service
           test -s release/frontend.tar.gz
@@ -82,9 +81,9 @@ jobs:
     name: Deploy to 1Panel server
     needs: build
     runs-on: ubuntu-latest
+    environment: production
     env:
       DEPLOY_ROOT: /home/deploy/cv
-      SITE_ROOT: /www/sites/codes123/index
     steps:
       - name: Download release artifact
         uses: actions/download-artifact@v4
@@ -112,11 +111,11 @@ jobs:
         run: |
           test -n "$DEPLOY_HOST"
           test -n "$DEPLOY_USER"
-          ssh -i "$HOME/.ssh/id_ed25519" -o IdentitiesOnly=yes -o BatchMode=yes \
+          ssh -i "$HOME/.ssh/id_ed25519" -o IdentitiesOnly=yes \
             "$DEPLOY_USER@$DEPLOY_HOST" \
-            "mkdir -p '$DEPLOY_ROOT/releases/$RELEASE_SHA' '$DEPLOY_ROOT/env' '$DEPLOY_ROOT/data' '$DEPLOY_ROOT/bin' '$DEPLOY_ROOT/run' '$DEPLOY_ROOT/logs' && chmod 700 '$DEPLOY_ROOT/env' '$DEPLOY_ROOT/data' '$DEPLOY_ROOT/run' '$DEPLOY_ROOT/logs'"
-          rsync -az --delete \
-            -e "ssh -i $HOME/.ssh/id_ed25519 -o IdentitiesOnly=yes -o BatchMode=yes" \
+            "mkdir -p '$DEPLOY_ROOT/releases/$RELEASE_SHA' '$DEPLOY_ROOT/env' '$DEPLOY_ROOT/data' '$DEPLOY_ROOT/bin' '$DEPLOY_ROOT/run' '$DEPLOY_ROOT/logs' && chmod 700 '$DEPLOY_ROOT/env'"
+          rsync -a --delete \
+            -e "ssh -i $HOME/.ssh/id_ed25519 -o IdentitiesOnly=yes" \
             release/ "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_ROOT/releases/$RELEASE_SHA/"
 
       - name: Activate release and restart Go service
@@ -125,9 +124,9 @@ jobs:
           DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
           RELEASE_SHA: ${{ github.sha }}
         run: |
-          ssh -i "$HOME/.ssh/id_ed25519" -o IdentitiesOnly=yes -o BatchMode=yes \
+          ssh -i "$HOME/.ssh/id_ed25519" -o IdentitiesOnly=yes \
             "$DEPLOY_USER@$DEPLOY_HOST" \
-            "CV_DEPLOY_ROOT='$DEPLOY_ROOT' CV_SITE_ROOT='$SITE_ROOT' bash '$DEPLOY_ROOT/releases/$RELEASE_SHA/remote-deploy.sh' '$RELEASE_SHA'"
+            "bash '$DEPLOY_ROOT/releases/$RELEASE_SHA/remote-deploy.sh' '$RELEASE_SHA'"
 
       - name: Verify public site and API
         run: |

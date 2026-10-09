@@ -50,9 +50,9 @@ Go 服务支持通过页面切换 `symbol` 和 EMA 快慢周期，也支持直�
 
 数据库首次启动时由服务自动创建，并按内置迁移版本创建表结构。旧的 `users.json`、`account_snapshots.jsonl` 等文件不会自动导入；云端会从空数据库开始，旧文件保留在原位置，不会随构建上传。
 
-GitHub Actions 按 `yuanling-house` 的发布方式构建并上传不可变 release，由普通部署用户在 `/home/deploy/cv` 下切换 release、启动 Go 服务并更新 1Panel 静态站点；不需要 `sudo`、systemd 或容器。服务由部署用户的 PID 文件管理，并写入 `@reboot` crontab，监听 `127.0.0.1:18188`。云端新数据库自动创建在 `/home/deploy/cv/data/quant.db`，日志和 PID 分别保存在 `/home/deploy/cv/logs`、`/home/deploy/cv/run`，不会被发布覆盖。服务器环境配置位于 `/home/deploy/cv/env/quant-service.env`；首次部署只会在此文件不存在时从安全模板创建，永不覆盖服务器配置，也不会上传本地 `.env`。部署账号需要可写 `/home/deploy/cv` 和 Nginx 配置中的 `/www/sites/codes123/index`，workflow 沿用 `DEPLOY_SSH_KEY`、`DEPLOY_KNOWN_HOSTS`、`DEPLOY_USER`、`DEPLOY_HOST` 这四个 GitHub Actions secrets。
+GitHub Actions 按 `yuanling-house` 的发布方式构建并上传不可变 release，由普通部署用户在 `/home/deploy/cv` 下切换 release、启动 Go 服务并更新 1Panel 静态站点；不需要 `sudo`、systemd 或容器。服务由部署用户的 PID 文件管理，并写入 `@reboot` crontab，监听 `127.0.0.1:18188`。云端新数据库自动创建在 `/home/deploy/cv/data/quant.db`，日志和 PID 分别保存在 `/home/deploy/cv/logs`、`/home/deploy/cv/run`，不会被发布覆盖。服务器环境配置位于 `/home/deploy/cv/env/quant-service.env`，首次部署前需要由部署用户手动创建并设置 `chmod 600`，部署不会覆盖服务器配置，也不会上传本地 `.env`。SSH 部署使用宿主机目录 `/opt/1panel/www/sites/codes123/index`；你在 Nginx 配置中看到的 `/www/sites/codes123/index` 是 1Panel/OpenResty 容器视角路径。部署账号需要可写 `/home/deploy/cv` 和 `/opt/1panel/www/sites/codes123/index`，workflow 沿用 `DEPLOY_SSH_KEY`、`DEPLOY_KNOWN_HOSTS`、`DEPLOY_USER`、`DEPLOY_HOST` 这四个 GitHub Actions secrets。
 
-首次部署后，如需启用邮件或 OKX 私有账户读取，用部署账号编辑服务器上的 `quant-service.env`，再用同一账号重启并查看日志：
+首次部署前，用部署账号创建服务器上的 `quant-service.env` 并填写配置；部署后如需修改邮件或 OKX 私有账户配置，再用同一账号重启并查看日志：
 
 ```bash
 nano /home/deploy/cv/env/quant-service.env
