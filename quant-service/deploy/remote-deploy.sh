@@ -13,7 +13,7 @@ DEPLOY_SHA="$1"
 }
 
 BASE_DIR="${CV_DEPLOY_ROOT:-$HOME/cv}"
-SITE_ROOT="${CV_SITE_ROOT:-/opt/1panel/www/sites/codes123/index}"
+SITE_ROOT="${CV_SITE_ROOT:-/www/sites/codes123/index}"
 RELEASE_DIR="$BASE_DIR/releases/$DEPLOY_SHA"
 ENV_FILE="$BASE_DIR/env/quant-service.env"
 
