@@ -50,9 +50,18 @@ Go 服务支持通过页面切换 `symbol` 和 EMA 快慢周期，也支持直�
 
 数据库首次启动时由服务自动创建，并按内置迁移版本创建表结构。旧的 `users.json`、`account_snapshots.jsonl` 等文件不会自动导入；云端会从空数据库开始，旧文件保留在原位置，不会随构建上传。
 
-GitHub Actions 的 `main` 部署会同时构建 Linux amd64 Go 服务，并通过 `systemd` 安装/重启 `quant-service`。服务器二进制位于 `/opt/1panel/apps/codes123/quant-service/quant-service`；服务只监听 `127.0.0.1:18188`，workflow 部署前会检查该端口是否空闲或确实由本服务占用。云端新数据库自动创建在 `/var/lib/quant-service/data/quant.db`，与发布目录分离，后续部署不会删除数据库。部署账号需要免交互 `sudo` 权限；workflow 沿用 `DEPLOY_SSH_KEY`、`DEPLOY_KNOWN_HOSTS`、`DEPLOY_USER`、`DEPLOY_HOST` 这四个 GitHub Actions secrets。服务器上的可选运行配置放在 `/etc/codes123/quant-service.env`，workflow 不会创建、覆盖或上传本地 `.env`。
+GitHub Actions 按 `yuanling-house` 的发布方式构建并上传不可变 release，由普通部署用户在 `/home/deploy/cv` 下切换 release、启动 Go 服务并更新 1Panel 静态站点；不需要 `sudo`、systemd 或容器。服务由部署用户的 PID 文件管理，并写入 `@reboot` crontab，监听 `127.0.0.1:18188`。云端新数据库自动创建在 `/home/deploy/cv/data/quant.db`，日志和 PID 分别保存在 `/home/deploy/cv/logs`、`/home/deploy/cv/run`，不会被发布覆盖。服务器环境配置位于 `/home/deploy/cv/env/quant-service.env`；首次部署只会在此文件不存在时从安全模板创建，永不覆盖服务器配置，也不会上传本地 `.env`。部署账号需要可写 `/home/deploy/cv` 和 `/opt/1panel/www/sites/codes123/index`，workflow 沿用 `DEPLOY_SSH_KEY`、`DEPLOY_KNOWN_HOSTS`、`DEPLOY_USER`、`DEPLOY_HOST` 这四个 GitHub Actions secrets。
 
-Actions 构建前端时会默认将 API 地址设为同源 `/api/quant/...`；因此还需在 1Panel 的 `codes123.cn` 网站配置中加入 [量化服务反向代理片段](quant-service/deploy/1panel-locations.conf)，将 API 转发到 `127.0.0.1:18188`。不要新建公网端口或改动其他项目的 `location`。若选择跨域 API，则应配置相应的 `VITE_QUANT_*` 地址，并在 `/etc/codes123/quant-service.env` 设置 `CORS_ORIGIN` 为前端的完整 origin。
+首次部署后，如需启用邮件或 OKX 私有账户读取，用部署账号编辑服务器上的 `quant-service.env`，再用同一账号重启并查看日志：
+
+```bash
+nano /home/deploy/cv/env/quant-service.env
+chmod 600 /home/deploy/cv/env/quant-service.env
+/home/deploy/cv/bin/start-quant-service.sh
+tail -n 80 /home/deploy/cv/logs/quant-service.log
+```
+
+Actions 构建前端时会默认将 API 地址设为同源 `/api/quant/...`；因此还需在 1Panel 的 `codes123.cn` 网站配置中加入 [量化服务反向代理片段](quant-service/deploy/1panel-locations.conf)，将 API 转发到 `127.0.0.1:18188`。不要新建公网端口或改动其他项目的 `location`。若选择跨域 API，则应配置相应的 `VITE_QUANT_*` 地址，并在 `/home/deploy/cv/env/quant-service.env` 设置 `CORS_ORIGIN` 为前端的完整 origin。
 
 ```bash
 cd quant-service
@@ -84,7 +93,7 @@ go run ./cmd/quant-service
 
 用户账户、关注标的、邮件通知设置和已完成通知事件保存在 `DATA_DIR/quant.db`；登录会话和邮箱验证码仍只保存在服务内存中。浏览器只保存 HttpOnly 会话 Cookie，不会把关注列表作为用户数据写入 localStorage。服务端启动时会合并所有用户的关注标的，在每日同步中逐个拉取并计算 EMA。
 
-要启用邮件功能，需要在 `quant-service/.env` 配置 `SMTP_HOST`、`SMTP_PORT`、`SMTP_USER`、`SMTP_PASSWORD` 和 `SMTP_FROM`。当前支持 Gmail 的 465 隐式 TLS 和 587 STARTTLS；`SMTP_PASSWORD` 应填写应用专用密码。若服务器直连 Gmail 时出现 TLS 握手 EOF，可选填 `SMTP_PROXY`，例如 `http://127.0.0.1:7890` 或 `socks5://127.0.0.1:7891`；留空时仍使用直连。注册验证码只保存在服务内存中，不写入账户文件，发送失败会自动作废本次验证码。平台还会发送 EMA 金叉（买入信号）和死叉（卖出信号）邮件；只有 SMTP 投递成功后才记录通知事件，失败时后续同步可以重试。邮件只做提醒，不会自动下单。
+本地开发时可在 `quant-service/.env` 配置邮件；生产环境请在服务器 `/home/deploy/cv/env/quant-service.env` 配置 `SMTP_HOST`、`SMTP_PORT`、`SMTP_USER`、`SMTP_PASSWORD` 和 `SMTP_FROM`，并限制文件权限为 `600`。当前支持 Gmail 的 465 隐式 TLS 和 587 STARTTLS；`SMTP_PASSWORD` 应填写应用专用密码。若服务器直连 Gmail 时出现 TLS 握手 EOF，可选填 `SMTP_PROXY`，例如 `http://127.0.0.1:7890` 或 `socks5://127.0.0.1:7891`；留空时仍使用直连。注册验证码只保存在服务内存中，不写入账户文件，发送失败会自动作废本次验证码。平台还会发送 EMA 金叉（买入信号）和死叉（卖出信号）邮件；只有 SMTP 投递成功后才记录通知事件，失败时后续同步可以重试。邮件只做提醒，不会自动下单。
 
 API Key 只需要 `Read` 权限，不要开启交易或提现权限，也不要把真实密钥提交到仓库。未配置密钥时服务仍可运行并只同步公开行情；配置不完整时会直接报错，避免误以为已经记录了实盘账户数据。
 

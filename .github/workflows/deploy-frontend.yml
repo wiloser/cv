@@ -1,4 +1,4 @@
-name: Deploy frontend and Go service
+name: Verify and deploy to 1Panel
 
 on:
   push:
@@ -10,207 +10,129 @@ permissions:
   contents: read
 
 concurrency:
-  group: codes123-frontend-production
+  group: codes123-production
   cancel-in-progress: true
 
 jobs:
-  build-and-deploy:
+  build:
+    name: Test and build release
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout source
+      - name: Check out source
         uses: actions/checkout@v4
 
-      - name: Configure Node.js
+      - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
 
-      - name: Configure Go
+      - name: Set up Go
         uses: actions/setup-go@v6
         with:
           go-version-file: quant-service/go.mod
           cache-dependency-path: quant-service/go.sum
 
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Run lint
-        run: npm run lint --if-present
-
-      - name: Build frontend
+      - name: Test and build frontend
         env:
           VITE_QUANT_MONITOR_URL: /api/quant/monitor
           VITE_QUANT_SYNC_URL: /api/quant/sync
           VITE_QUANT_OPTIMIZE_URL: /api/quant/optimize
-        run: npm run build
-
-      - name: Build Go quant service
-        shell: bash
         run: |
-          mkdir -p dist
-          cd quant-service
-          CGO_ENABLED=1 GOOS=linux GOARCH=amd64 \
-            go build -trimpath -ldflags='-s -w' \
-            -o ../dist/quant-service ./cmd/quant-service
+          npm ci
+          npm run lint --if-present
+          npm run build
 
-      - name: Verify build output
+      - name: Test Go quant service
+        working-directory: quant-service
+        env:
+          CGO_ENABLED: 1
+        run: go test ./...
+
+      - name: Build Linux Go quant service
+        working-directory: quant-service
+        env:
+          CGO_ENABLED: 1
+          GOOS: linux
+          GOARCH: amd64
         run: |
-          test -s dist/client/index.html
-          test -s dist/quant-service
-          echo "dist/client/index.html exists"
-          echo "dist/quant-service exists"
-          find dist/client -maxdepth 2 -type f | head -30
+          mkdir -p ../release
+          go build -trimpath -ldflags='-s -w' -o ../release/quant-service ./cmd/quant-service
+
+      - name: Package immutable release
+        run: |
+          tar -czf release/frontend.tar.gz -C dist/client .
+          cp quant-service/deploy/remote-deploy.sh release/remote-deploy.sh
+          cp quant-service/deploy/start-quant-service.sh release/start-quant-service.sh
+          cp quant-service/.env.example release/quant-service.env.example
+          chmod 755 release/quant-service release/remote-deploy.sh release/start-quant-service.sh
+          test -s release/quant-service
+          test -s release/frontend.tar.gz
+          bash -n release/remote-deploy.sh release/start-quant-service.sh
+
+      - name: Upload release artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: cv-release-${{ github.sha }}
+          path: release/
+          if-no-files-found: error
+          retention-days: 7
+
+  deploy:
+    name: Deploy to 1Panel server
+    needs: build
+    runs-on: ubuntu-latest
+    env:
+      DEPLOY_ROOT: /home/deploy/cv
+      SITE_ROOT: /opt/1panel/www/sites/codes123/index
+    steps:
+      - name: Download release artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: cv-release-${{ github.sha }}
+          path: release
 
       - name: Configure SSH
-        shell: bash
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
         run: |
+          test -n "$DEPLOY_SSH_KEY"
+          test -n "$DEPLOY_KNOWN_HOSTS"
           install -m 700 -d "$HOME/.ssh"
+          printf '%s\n' "$DEPLOY_SSH_KEY" >"$HOME/.ssh/id_ed25519"
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" >"$HOME/.ssh/known_hosts"
+          chmod 600 "$HOME/.ssh/id_ed25519" "$HOME/.ssh/known_hosts"
 
-          printf '%s\n' "${{ secrets.DEPLOY_SSH_KEY }}" \
-            > "$HOME/.ssh/id_ed25519"
-
-          printf '%s\n' "${{ secrets.DEPLOY_KNOWN_HOSTS }}" \
-            > "$HOME/.ssh/known_hosts"
-
-          chmod 600 "$HOME/.ssh/id_ed25519"
-          chmod 600 "$HOME/.ssh/known_hosts"
-
-      - name: Test SSH connection
-        shell: bash
-        run: |
-          ssh \
-            -i "$HOME/.ssh/id_ed25519" \
-            -o IdentitiesOnly=yes \
-            -o ConnectTimeout=15 \
-            "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}" \
-            "echo 'SSH connection successful'"
-
-      - name: Check Go service port allocation
-        shell: bash
+      - name: Upload immutable release
         env:
-          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          RELEASE_SHA: ${{ github.sha }}
         run: |
-          ssh \
-            -i "$HOME/.ssh/id_ed25519" \
-            -o IdentitiesOnly=yes \
+          test -n "$DEPLOY_HOST"
+          test -n "$DEPLOY_USER"
+          ssh -i "$HOME/.ssh/id_ed25519" -o IdentitiesOnly=yes \
             "$DEPLOY_USER@$DEPLOY_HOST" \
-            "bash -s" <<'REMOTE'
-          set -euo pipefail
-          port=18188
-          listeners="$(sudo -n ss -H -ltnp "sport = :${port}")"
-          if [[ -n "$listeners" ]]; then
-            current_exec="$(sudo -n systemctl show -p ExecStart --value \
-              quant-service.service 2>/dev/null || true)"
-            if sudo -n systemctl is-active --quiet quant-service.service && \
-              [[ "$current_exec" == *"/opt/1panel/apps/codes123/quant-service/quant-service"* ]]; then
-              echo "Port ${port} is already owned by quant-service"
-              exit 0
-            fi
-            sudo -n ss -ltnp "sport = :${port}" >&2 || true
-            echo "Port ${port} is occupied by another service; refusing deployment" >&2
-            exit 1
-          fi
-          echo "Port ${port} is available for quant-service"
-          REMOTE
-
-      - name: Deploy frontend
-        shell: bash
-        run: |
-          rsync \
-            --archive \
-            --compress \
-            --delete \
-            --chmod=D755,F644 \
+            "mkdir -p '$DEPLOY_ROOT/releases/$RELEASE_SHA' '$DEPLOY_ROOT/env' '$DEPLOY_ROOT/data' '$DEPLOY_ROOT/bin' '$DEPLOY_ROOT/run' '$DEPLOY_ROOT/logs' && chmod 700 '$DEPLOY_ROOT/env' '$DEPLOY_ROOT/data' '$DEPLOY_ROOT/run' '$DEPLOY_ROOT/logs'"
+          rsync -a --delete \
             -e "ssh -i $HOME/.ssh/id_ed25519 -o IdentitiesOnly=yes" \
-            dist/client/ \
-            "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:/opt/1panel/www/sites/codes123/index/"
+            release/ "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_ROOT/releases/$RELEASE_SHA/"
 
-      - name: Verify deployment
-        shell: bash
+      - name: Activate release and restart Go service
         env:
-          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          RELEASE_SHA: ${{ github.sha }}
         run: |
-          ssh \
-            -i "$HOME/.ssh/id_ed25519" \
-            -o IdentitiesOnly=yes \
+          ssh -i "$HOME/.ssh/id_ed25519" -o IdentitiesOnly=yes \
             "$DEPLOY_USER@$DEPLOY_HOST" \
-            "test -s /opt/1panel/www/sites/codes123/index/index.html &&
-             echo 'Deployment successful'"
+            "CV_DEPLOY_ROOT='$DEPLOY_ROOT' CV_SITE_ROOT='$SITE_ROOT' bash '$DEPLOY_ROOT/releases/$RELEASE_SHA/remote-deploy.sh' '$RELEASE_SHA'"
 
-      - name: Upload Go service artifacts
-        shell: bash
-        env:
-          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
-          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+      - name: Verify public site and API
         run: |
-          scp \
-            -i "$HOME/.ssh/id_ed25519" \
-            -o IdentitiesOnly=yes \
-            dist/quant-service \
-            "$DEPLOY_USER@$DEPLOY_HOST:quant-service-$GITHUB_SHA"
-
-          scp \
-            -i "$HOME/.ssh/id_ed25519" \
-            -o IdentitiesOnly=yes \
-            quant-service/deploy/quant-service.service \
-            "$DEPLOY_USER@$DEPLOY_HOST:quant-service.service-$GITHUB_SHA"
-
-      - name: Install and restart Go service
-        shell: bash
-        env:
-          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
-          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
-        run: |
-          ssh \
-            -i "$HOME/.ssh/id_ed25519" \
-            -o IdentitiesOnly=yes \
-            "$DEPLOY_USER@$DEPLOY_HOST" \
-            "bash -s -- '$GITHUB_SHA'" <<'REMOTE'
-          set -euo pipefail
-          release_id="$1"
-          app_dir=/opt/1panel/apps/codes123/quant-service
-          data_dir=/var/lib/quant-service/data
-          binary_upload="$HOME/quant-service-${release_id}"
-          unit_upload="$HOME/quant-service.service-${release_id}"
-          trap 'rm -f "$binary_upload" "$unit_upload"' EXIT
-
-          if ! id -u quant-service >/dev/null 2>&1; then
-            sudo -n useradd --system --home-dir /var/lib/quant-service \
-              --shell /usr/sbin/nologin quant-service
-          fi
-
-          sudo -n install -d -o root -g root -m 0755 "$app_dir"
-          sudo -n install -d -o root -g root -m 0750 /etc/codes123
-          sudo -n install -d -o quant-service -g quant-service -m 0750 \
-            /var/lib/quant-service "$data_dir"
-          sudo -n install -o root -g root -m 0755 "$binary_upload" \
-            "$app_dir/quant-service"
-          sudo -n install -o root -g root -m 0644 "$unit_upload" \
-            /etc/systemd/system/quant-service.service
-
-          sudo -n systemctl daemon-reload
-          sudo -n systemctl enable quant-service.service
-          sudo -n systemctl restart quant-service.service
-          sudo -n systemctl is-active --quiet quant-service.service
-
-          for attempt in $(seq 1 60); do
-            if curl --silent --fail \
-              http://127.0.0.1:18188/healthz >/dev/null; then
-              echo "Go quant service is healthy"
-              exit 0
-            fi
-            if ! sudo -n systemctl is-active --quiet quant-service.service; then
-              sudo -n journalctl -u quant-service.service -n 60 --no-pager
-              exit 1
-            fi
-            sleep 2
-          done
-
-          sudo -n journalctl -u quant-service.service -n 60 --no-pager
-          echo "Go quant service did not become healthy in time" >&2
-          exit 1
-          REMOTE
+          curl --fail --location --silent --show-error --retry 5 --retry-delay 2 \
+            https://codes123.cn/ >/dev/null
+          curl --fail --location --silent --show-error --retry 5 --retry-delay 2 \
+            https://codes123.cn/api/quant/monitor >/dev/null
+          echo 'codes123.cn frontend and quant API are healthy'
