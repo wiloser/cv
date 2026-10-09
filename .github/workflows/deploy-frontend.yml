@@ -82,7 +82,6 @@ jobs:
     name: Deploy to 1Panel server
     needs: build
     runs-on: ubuntu-latest
-    timeout-minutes: 30
     env:
       DEPLOY_ROOT: /home/deploy/cv
       SITE_ROOT: /www/sites/codes123/index
@@ -111,22 +110,13 @@ jobs:
           DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
           RELEASE_SHA: ${{ github.sha }}
         run: |
-          retry() {
-            local attempt=1
-            until "$@"; do
-              if (( attempt >= 5 )); then return 1; fi
-              sleep "$((attempt * 4))"
-              attempt="$((attempt + 1))"
-            done
-          }
           test -n "$DEPLOY_HOST"
           test -n "$DEPLOY_USER"
-          retry ssh -i "$HOME/.ssh/id_ed25519" -o IdentitiesOnly=yes \
-            -o BatchMode=yes -o ConnectTimeout=20 -o ServerAliveInterval=15 -o ServerAliveCountMax=3 \
+          ssh -i "$HOME/.ssh/id_ed25519" -o IdentitiesOnly=yes -o BatchMode=yes \
             "$DEPLOY_USER@$DEPLOY_HOST" \
             "mkdir -p '$DEPLOY_ROOT/releases/$RELEASE_SHA' '$DEPLOY_ROOT/env' '$DEPLOY_ROOT/data' '$DEPLOY_ROOT/bin' '$DEPLOY_ROOT/run' '$DEPLOY_ROOT/logs' && chmod 700 '$DEPLOY_ROOT/env' '$DEPLOY_ROOT/data' '$DEPLOY_ROOT/run' '$DEPLOY_ROOT/logs'"
-          retry rsync -az --delete --timeout=90 \
-            -e "ssh -i $HOME/.ssh/id_ed25519 -o IdentitiesOnly=yes -o BatchMode=yes -o ConnectTimeout=20 -o ServerAliveInterval=15 -o ServerAliveCountMax=3" \
+          rsync -az --delete \
+            -e "ssh -i $HOME/.ssh/id_ed25519 -o IdentitiesOnly=yes -o BatchMode=yes" \
             release/ "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_ROOT/releases/$RELEASE_SHA/"
 
       - name: Activate release and restart Go service
@@ -135,8 +125,7 @@ jobs:
           DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
           RELEASE_SHA: ${{ github.sha }}
         run: |
-          ssh -i "$HOME/.ssh/id_ed25519" -o IdentitiesOnly=yes \
-            -o BatchMode=yes -o ConnectTimeout=20 -o ServerAliveInterval=15 -o ServerAliveCountMax=3 \
+          ssh -i "$HOME/.ssh/id_ed25519" -o IdentitiesOnly=yes -o BatchMode=yes \
             "$DEPLOY_USER@$DEPLOY_HOST" \
             "CV_DEPLOY_ROOT='$DEPLOY_ROOT' CV_SITE_ROOT='$SITE_ROOT' bash '$DEPLOY_ROOT/releases/$RELEASE_SHA/remote-deploy.sh' '$RELEASE_SHA'"
 
