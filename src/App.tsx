@@ -1,6 +1,7 @@
 import {
   Activity,
   ArrowRight,
+  Bell,
   Check,
   CheckCircle2,
   Clipboard,
@@ -28,6 +29,7 @@ import {
 import { CaseDetail } from './components/ProjectDetail'
 import { QuantOverviewPage } from './components/QuantOverviewPage'
 import { QuantAccountPage } from './components/QuantAccountPage'
+import { QuantNotificationPage } from './components/QuantNotificationPage'
 import { QuantMonitorPage } from './components/QuantMonitorPage'
 import { CaseCard } from './components/RepositoryCard'
 import { WorkspaceHub } from './components/WorkspaceHub'
@@ -188,7 +190,8 @@ function SiteHeader() {
         <nav className="ml-auto hidden items-center gap-1 md:flex" aria-label="主导航">
           <Link className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-[12px] font-semibold no-underline transition hover:bg-white hover:text-[#151615] ${isGraduation ? 'bg-white text-[#151615]' : 'text-[#5f625d]'}`} to="/graduation#projects"><GraduationCap className="size-3.5" /> 毕设集</Link>
           <Link className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-[12px] font-semibold no-underline transition hover:bg-white hover:text-[#151615] ${isQuant ? 'bg-white text-[#151615]' : 'text-[#5f625d]'}`} to="/quant"><Activity className="size-3.5" /> 量化监测</Link>
-          {isQuant && <Link className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-[12px] font-semibold text-[#5f625d] no-underline transition hover:bg-white hover:text-[#151615]" to="/quant/account"><UserRound className="size-3.5" /> 账户与通知</Link>}
+          {isQuant && <Link className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-[12px] font-semibold text-[#5f625d] no-underline transition hover:bg-white hover:text-[#151615]" to="/quant/account"><UserRound className="size-3.5" /> 账户</Link>}
+          {isQuant && <Link className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-[12px] font-semibold text-[#5f625d] no-underline transition hover:bg-white hover:text-[#151615]" to="/quant/notifications"><Bell className="size-3.5" /> 通知设置</Link>}
           {isGraduation && <Link className="rounded-full px-3.5 py-2 text-[12px] font-semibold text-[#5f625d] no-underline transition hover:bg-white hover:text-[#151615]" to="/graduation#customize">定制项目</Link>}
           <span className="rounded-full border border-[#d6d7d0] bg-white px-3.5 py-2 text-[12px] font-semibold text-[#5557e8]">微信：_trees168</span>
         </nav>
@@ -538,6 +541,7 @@ function CodesApp() {
         <Route path="graduation/cases/:slug" element={<CaseDetail cases={cases} />} />
         <Route path="quant" element={<QuantOverviewPage initialData={quant} />} />
         <Route path="quant/account" element={<QuantAccountPage />} />
+        <Route path="quant/notifications" element={<QuantNotificationPage />} />
         <Route path="quant/:symbol" element={<QuantDetailRoute initialData={quant} />} />
         <Route path="quant-monitor" element={<Navigate replace to="/quant" />} />
         <Route path="resources/:slug" element={<LegacyResourceRedirect />} />

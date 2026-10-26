@@ -1,13 +1,10 @@
 import {
   ArrowLeft,
-  Bell,
   Check,
   CircleAlert,
   LogIn,
   LogOut,
-  Mail,
   ShieldCheck,
-  Sparkles,
   UserRound,
 } from 'lucide-react'
 import { useEffect, useState, type FormEvent } from 'react'
@@ -18,16 +15,13 @@ import {
   logoutQuantUser,
   registerQuantUser,
   sendQuantRegistrationCode,
-  sendQuantTestNotification,
-  updateQuantNotifications,
   type AccountMode,
 } from '../data/quantAccount'
-import type { QuantNotificationSettings, QuantUser } from '../data/quant'
+import type { QuantUser } from '../data/quant'
 
 const shell = 'mx-auto w-[calc(100%_-_28px)] max-w-[1080px] sm:w-[calc(100%_-_48px)]'
-const defaultNotificationSettings: QuantNotificationSettings = { enabled: false, email: '', onBuy: true, onSell: true }
 
-function AuthPanel({ onAuthenticated }: { onAuthenticated: (user: QuantUser) => void }) {
+export function AuthPanel({ onAuthenticated }: { onAuthenticated: (user: QuantUser) => void }) {
   const [mode, setMode] = useState<AccountMode>('login')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -121,44 +115,7 @@ function AuthPanel({ onAuthenticated }: { onAuthenticated: (user: QuantUser) => 
   )
 }
 
-function SettingsPanel({ user, onUserChange, onLogout }: { user: QuantUser; onUserChange: (user: QuantUser) => void; onLogout: () => void }) {
-  const [settings, setSettings] = useState<QuantNotificationSettings>(user.notifications ?? defaultNotificationSettings)
-  const [saving, setSaving] = useState(false)
-  const [testing, setTesting] = useState(false)
-  const [status, setStatus] = useState('')
-  const [error, setError] = useState('')
-
-  const save = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    setSaving(true)
-    setStatus('')
-    setError('')
-    try {
-      const updated = await updateQuantNotifications(settings)
-      onUserChange(updated)
-      setSettings(updated.notifications)
-      setStatus('通知设置已保存')
-    } catch (requestError: unknown) {
-      setError(requestError instanceof Error ? requestError.message : '保存失败')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  const sendTest = async () => {
-    setTesting(true)
-    setStatus('')
-    setError('')
-    try {
-      await sendQuantTestNotification()
-      setStatus('测试邮件已提交')
-    } catch (requestError: unknown) {
-      setError(requestError instanceof Error ? requestError.message : '测试邮件发送失败')
-    } finally {
-      setTesting(false)
-    }
-  }
-
+function SettingsPanel({ user, onLogout }: { user: QuantUser; onLogout: () => void }) {
   return (
     <div className="space-y-6">
       <section className="rounded-[24px] border border-[#deded7] bg-white p-6 sm:p-8">
@@ -166,19 +123,14 @@ function SettingsPanel({ user, onUserChange, onLogout }: { user: QuantUser; onUs
           <div className="flex items-center gap-3"><span className="grid size-11 place-items-center rounded-2xl bg-[#eff0ff] text-[#5557e8]"><UserRound className="size-5" /></span><div><p className="m-0 font-mono text-[9px] tracking-[.14em] text-[#a0a29c]">SIGNED IN</p><h1 className="mt-1 mb-0 text-[23px] tracking-[-.05em]">{user.email}</h1></div></div>
           <button className="inline-flex h-9 cursor-pointer items-center gap-2 rounded-full border border-[#d6d7d0] bg-white px-3.5 text-[10px] font-bold text-[#555852] transition hover:border-[#a04444] hover:text-[#a04444]" onClick={onLogout} type="button"><LogOut className="size-3.5" />退出登录</button>
         </div>
-        <div className="mt-7 grid gap-3 border-t border-[#efefe9] pt-5 sm:grid-cols-3"><div className="rounded-xl bg-[#f8f8f5] p-3"><span className="block text-[9px] text-[#a0a29c]">邮箱状态</span><strong className="mt-1 block text-[12px] text-[#27734a]">已验证</strong></div><div className="rounded-xl bg-[#f8f8f5] p-3"><span className="block text-[9px] text-[#a0a29c]">服务端关注</span><strong className="mt-1 block text-[12px] text-[#151615]">{user.watchlist.length} 个标的</strong></div><div className="rounded-xl bg-[#f8f8f5] p-3"><span className="block text-[9px] text-[#a0a29c]">通知渠道</span><strong className="mt-1 block text-[12px] text-[#151615]">{settings.enabled ? '邮件已开启' : '未开启'}</strong></div></div>
+        <div className="mt-7 grid gap-3 border-t border-[#efefe9] pt-5 sm:grid-cols-3"><div className="rounded-xl bg-[#f8f8f5] p-3"><span className="block text-[9px] text-[#a0a29c]">邮箱状态</span><strong className="mt-1 block text-[12px] text-[#27734a]">已验证</strong></div><div className="rounded-xl bg-[#f8f8f5] p-3"><span className="block text-[9px] text-[#a0a29c]">服务端关注</span><strong className="mt-1 block text-[12px] text-[#151615]">{user.watchlist.length} 个标的</strong></div><div className="rounded-xl bg-[#f8f8f5] p-3"><span className="block text-[9px] text-[#a0a29c]">通知渠道</span><strong className="mt-1 block text-[12px] text-[#151615]">{user.notifications?.enabled ? '邮件已开启' : '未开启'}</strong></div></div>
       </section>
 
       <section className="rounded-[24px] border border-[#deded7] bg-white p-6 sm:p-8">
-        <div className="flex items-center gap-3"><span className="grid size-10 place-items-center rounded-xl bg-[#f4f4df] text-[#a57816]"><Bell className="size-4" /></span><div><h2 className="m-0 text-[18px] tracking-[-.04em]">信号邮件通知</h2><p className="mt-1 mb-0 text-[10px] text-[#858880]">当关注标的出现 EMA 金叉或死叉时发送邮件。</p></div></div>
-        <form className="mt-6" onSubmit={save}>
-          <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-[#efefe9] bg-[#fbfbf8] p-3.5 text-[11px] font-semibold text-[#555852]"><input checked={settings.enabled} className="size-4 accent-[#5557e8]" onChange={(event) => setSettings((current) => ({ ...current, enabled: event.target.checked }))} type="checkbox" />开启信号邮件通知</label>
-          <label className="mt-4 block text-[10px] font-semibold text-[#555852]"><span className="flex items-center gap-2"><Mail className="size-3.5 text-[#a0a29c]" />接收邮箱</span><input className="mt-2 block h-10 w-full rounded-xl border border-[#d6d7d0] bg-[#fbfbf8] px-3 text-[11px] text-[#151615] outline-none transition focus:border-[#5557e8]" onChange={(event) => setSettings((current) => ({ ...current, email: event.target.value }))} required={settings.enabled} type="email" value={settings.email} /></label>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2"><label className="flex cursor-pointer items-center gap-3 rounded-xl border border-[#efefe9] p-3 text-[10px] text-[#555852]"><input checked={settings.onBuy} className="size-4 accent-[#27734a]" onChange={(event) => setSettings((current) => ({ ...current, onBuy: event.target.checked }))} type="checkbox" /><span><strong className="block text-[#151615]">买入信号</strong><span className="mt-0.5 block text-[#a0a29c]">EMA 金叉</span></span></label><label className="flex cursor-pointer items-center gap-3 rounded-xl border border-[#efefe9] p-3 text-[10px] text-[#555852]"><input checked={settings.onSell} className="size-4 accent-[#a04444]" onChange={(event) => setSettings((current) => ({ ...current, onSell: event.target.checked }))} type="checkbox" /><span><strong className="block text-[#151615]">卖出信号</strong><span className="mt-0.5 block text-[#a0a29c]">EMA 死叉</span></span></label></div>
-          {error && <p className="mt-4 mb-0 rounded-xl bg-[#fff5f2] px-3 py-2.5 text-[10px] leading-[1.6] text-[#a04444]" role="alert">{error}</p>}
-          {status && <p className="mt-4 mb-0 rounded-xl bg-[#eef9f1] px-3 py-2.5 text-[10px] leading-[1.6] text-[#27734a]" role="status">{status}</p>}
-          <div className="mt-5 flex flex-wrap gap-2"><button className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-xl bg-[#151615] px-4 text-[10px] font-bold text-white transition hover:bg-[#5557e8] disabled:cursor-not-allowed disabled:opacity-60" disabled={saving} type="submit"><Sparkles className="size-3.5 text-[#d9ff63]" />{saving ? '保存中…' : '保存通知设置'}</button><button className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-xl border border-[#d6d7d0] bg-white px-4 text-[10px] font-bold text-[#555852] transition hover:border-[#151615] hover:text-[#151615] disabled:cursor-not-allowed disabled:opacity-60" disabled={testing || !settings.email} onClick={() => { void sendTest() }} type="button"><Mail className="size-3.5" />{testing ? '发送中…' : '发送测试邮件'}</button></div>
-        </form>
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div><p className="m-0 font-mono text-[9px] font-semibold tracking-[.15em] text-[#5557e8]">SIGNAL ROUTING</p><h2 className="mt-2 mb-1 text-[18px] tracking-[-.04em]">策略信号通知</h2><p className="m-0 text-[10px] leading-[1.7] text-[#858880]">{user.notifications?.rules?.length ?? 0} 组 EMA 策略 · {user.notifications?.enabled ? '邮件已开启' : '邮件未开启'}</p></div>
+          <Link className="inline-flex h-10 items-center gap-2 rounded-xl bg-[#151615] px-4 text-[10px] font-bold text-white no-underline transition hover:bg-[#5557e8]" to="/quant/notifications">打开通知设置 <ArrowLeft className="size-3.5 rotate-180" /></Link>
+        </div>
       </section>
 
       <section className="rounded-[24px] border border-[#deded7] bg-white p-6 sm:p-8"><div className="flex items-center justify-between gap-3"><div><h2 className="m-0 text-[18px] tracking-[-.04em]">我的关注</h2><p className="mt-1 mb-0 text-[10px] text-[#858880]">关注列表由服务端账户统一管理，不依赖浏览器缓存。</p></div><Link className="text-[10px] font-bold text-[#5557e8] no-underline hover:underline" to="/quant">管理列表 →</Link></div><div className="mt-5 flex flex-wrap gap-2">{user.watchlist.map((symbol) => <Link className="rounded-full border border-[#deded7] bg-[#fbfbf8] px-3 py-2 font-mono text-[10px] font-semibold text-[#555852] no-underline transition hover:border-[#5557e8] hover:text-[#5557e8]" key={symbol} to={`/quant/${encodeURIComponent(symbol)}`}>{symbol}</Link>)}</div></section>
@@ -216,7 +168,7 @@ export function QuantAccountPage() {
         {loading && <div className="grid min-h-[360px] place-items-center rounded-[26px] border border-[#deded7] bg-white text-[11px] text-[#858880]">正在读取账户状态…</div>}
         {!loading && error && <div className="mx-auto max-w-[620px] rounded-2xl border border-[#f1d4cd] bg-[#fff5f2] p-5 text-[11px] leading-[1.7] text-[#a04444]" role="alert">{error}</div>}
         {!loading && !error && !user && <AuthPanel onAuthenticated={setUser} />}
-        {!loading && !error && user && <SettingsPanel onLogout={() => { void logout() }} onUserChange={setUser} user={user} />}
+        {!loading && !error && user && <SettingsPanel onLogout={() => { void logout() }} user={user} />}
       </div>
     </main>
   )

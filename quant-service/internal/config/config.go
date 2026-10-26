@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	_ "time/tzdata"
 )
 
 // Config contains only runtime configuration. Secrets are intentionally read
@@ -29,7 +30,11 @@ type Config struct {
 	BacktestFeeRate        float64
 	BacktestSlippageRate   float64
 	BillsLookback          time.Duration
-	SyncInterval           time.Duration
+	SyncAt                 string
+	SyncTimezone           string
+	SyncLocation           *time.Location
+	SyncHour               int
+	SyncMinute             int
 	SyncOnStart            bool
 	HTTPAddr               string
 	DataDir                string
@@ -56,6 +61,8 @@ func Load() (Config, error) {
 		HTTPAddr:        envString("HTTP_ADDR", ":8081"),
 		DataDir:         envString("DATA_DIR", "./data"),
 		CORSOrigin:      envString("CORS_ORIGIN", "http://localhost:5174"),
+		SyncAt:          envString("SYNC_AT", "00:00"),
+		SyncTimezone:    envString("SYNC_TIMEZONE", "Asia/Shanghai"),
 		SMTPHost:        strings.TrimSpace(os.Getenv("SMTP_HOST")),
 		SMTPUser:        strings.TrimSpace(os.Getenv("SMTP_USER")),
 		SMTPPassword:    os.Getenv("SMTP_PASSWORD"),
@@ -88,8 +95,14 @@ func Load() (Config, error) {
 	if cfg.BillsLookback, err = envDuration("BILLS_LOOKBACK", 24*time.Hour); err != nil {
 		return Config{}, err
 	}
-	if cfg.SyncInterval, err = envDuration("SYNC_INTERVAL", 24*time.Hour); err != nil {
-		return Config{}, err
+	parsedSyncAt, err := time.Parse("15:04", cfg.SyncAt)
+	if err != nil {
+		return Config{}, fmt.Errorf("SYNC_AT must be a local time in HH:MM format: %w", err)
+	}
+	cfg.SyncHour, cfg.SyncMinute = parsedSyncAt.Hour(), parsedSyncAt.Minute()
+	cfg.SyncLocation, err = time.LoadLocation(cfg.SyncTimezone)
+	if err != nil {
+		return Config{}, fmt.Errorf("SYNC_TIMEZONE must be a valid IANA timezone: %w", err)
 	}
 	if cfg.RequestTimeout, err = envDuration("OKX_REQUEST_TIMEOUT", 15*time.Second); err != nil {
 		return Config{}, err
@@ -97,8 +110,8 @@ func Load() (Config, error) {
 	if cfg.SMTPPort, err = envInt("SMTP_PORT", 587); err != nil {
 		return Config{}, err
 	}
-	if cfg.BillsLookback <= 0 || cfg.SyncInterval <= 0 || cfg.RequestTimeout <= 0 {
-		return Config{}, errors.New("BILLS_LOOKBACK, SYNC_INTERVAL and OKX_REQUEST_TIMEOUT must be positive")
+	if cfg.BillsLookback <= 0 || cfg.RequestTimeout <= 0 {
+		return Config{}, errors.New("BILLS_LOOKBACK and OKX_REQUEST_TIMEOUT must be positive")
 	}
 	if cfg.BacktestInitialCapital <= 0 {
 		return Config{}, errors.New("BACKTEST_INITIAL_CAPITAL must be positive")
@@ -137,6 +150,23 @@ func (c Config) HasAnyPrivateCredential() bool {
 
 func (c Config) ShouldReadPositions() bool {
 	return c.InstrumentType != "SPOT"
+}
+
+func (c Config) NextSyncTime(now time.Time) time.Time {
+	location := c.SyncLocation
+	if location == nil {
+		location = time.UTC
+	}
+	localNow := now.In(location)
+	next := time.Date(localNow.Year(), localNow.Month(), localNow.Day(), c.SyncHour, c.SyncMinute, 0, 0, location)
+	if !next.After(localNow) {
+		next = next.AddDate(0, 0, 1)
+	}
+	return next
+}
+
+func (c Config) SyncSchedule() string {
+	return fmt.Sprintf("每天 %02d:%02d (%s)", c.SyncHour, c.SyncMinute, c.SyncTimezone)
 }
 
 func envString(key, fallback string) string {

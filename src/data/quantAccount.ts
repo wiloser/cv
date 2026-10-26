@@ -1,4 +1,4 @@
-import { quantApiUrl, type QuantNotificationSettings, type QuantUser } from './quant'
+import { quantApiUrl, type QuantNotificationSettings, type QuantServiceConfig, type QuantUser } from './quant'
 
 export type AccountMode = 'login' | 'register'
 
@@ -32,6 +32,10 @@ export async function getQuantUser() {
     throw new Error(payload && typeof payload === 'object' && 'error' in payload && typeof payload.error === 'string' ? payload.error : `账户读取失败：${response.status}`)
   }
   return payload as QuantUser
+}
+
+export async function getQuantServiceConfig() {
+  return request<QuantServiceConfig>('/config')
 }
 
 export async function sendQuantRegistrationCode(email: string) {

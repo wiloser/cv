@@ -39,7 +39,7 @@ npm run build
 - 完整项目包、最终论文与答辩 PPT：`public/downloads/`
 
 页面运行时通过 `fetch` 读取静态内容 JSON。更新文章或案例时只需修改对应数据文件；修改页面结构与样式时再重新构建。量化监测页通过 Go API 读取实时数据；没有配置 API 时才使用 `public/data/quant-monitor.json` 作为界面兜底。
-Go 服务支持通过页面切换 `symbol` 和 EMA 快慢周期，也支持直接给 `/api/quant/monitor`、`/api/quant/backtest`、`/api/quant/sync` 等接口传 `symbol`、`fast`、`slow` 查询参数；同步快照和回测明细写入 SQLite。每日采集由运行中的 Go 服务按 `SYNC_INTERVAL` 调度，与前端构建分开。
+Go 服务支持通过页面切换 `symbol` 和 EMA 快慢周期，也支持直接给 `/api/quant/monitor`、`/api/quant/backtest`、`/api/quant/sync` 等接口传 `symbol`、`fast`、`slow` 查询参数；同步快照和回测明细写入 SQLite。定时采集默认每天 `00:00`（`Asia/Shanghai`），由 `SYNC_AT` 和 `SYNC_TIMEZONE` 控制；同一轮新触发的策略信号按账户合并为一封 HTML 邮件。通知规则在 `/quant/notifications` 设置，与前端构建分开。
 项目预览只使用对应项目的真实运行截图或验收截图，不使用示意图、通用图库或模拟后台界面。
 
 新增项目默认采用 React + Go（Gin）+ SQLite，以降低云端常驻资源；仅在确实依赖 Python 深度学习生态时，通过 Flask 提供独立模型推理接口。完整项目包统一保留 `code/`、`docs/`、`ppt/` 三部分，其中 `docs/` 只包含最终论文。

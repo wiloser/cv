@@ -442,6 +442,7 @@ func (s *Service) MonitorDataFor(options RunOptions) (MonitorData, error) {
 	}
 	fastPeriod := emaPeriods[0]
 	slowPeriod := emaPeriods[len(emaPeriods)-1]
+	nextSync := s.cfg.NextSyncTime(time.Now())
 	data := MonitorData{
 		Mode:         "demo",
 		InstrumentID: instrumentID,
@@ -449,8 +450,8 @@ func (s *Service) MonitorDataFor(options RunOptions) (MonitorData, error) {
 		FastPeriod:   fastPeriod,
 		SlowPeriod:   slowPeriod,
 		UpdatedAt:    time.Now().UTC().Format("2006-01-02T15:04:05.000Z"),
-		NextSyncAt:   time.Now().UTC().Add(s.cfg.SyncInterval).Format("2006-01-02T15:04:05.000Z"),
-		SyncSchedule: "每 " + s.cfg.SyncInterval.String(),
+		NextSyncAt:   nextSync.UTC().Format("2006-01-02T15:04:05.000Z"),
+		SyncSchedule: s.cfg.SyncSchedule(),
 		SourceNote:   "OKX 只读行情与账户快照，服务不包含下单、撤单或提现接口。",
 		Metrics: []MonitorMetric{
 			{Label: "EMA " + strconv.Itoa(fastPeriod), Value: "--", Change: "--", Direction: "flat", Note: "等待首次同步"},
@@ -472,9 +473,6 @@ func (s *Service) MonitorDataFor(options RunOptions) (MonitorData, error) {
 		}
 		data.Mode = "live"
 		data.UpdatedAt = latest.RecordedAt
-		if parsed, parseErr := time.Parse("2006-01-02T15:04:05.000Z", latest.RecordedAt); parseErr == nil {
-			data.NextSyncAt = parsed.Add(s.cfg.SyncInterval).Format("2006-01-02T15:04:05.000Z")
-		}
 		for _, value := range latest.EMA.Values {
 			metricIndex := -1
 			switch value.Period {

@@ -125,6 +125,23 @@ export interface QuantNotificationSettings {
   email: string
   onBuy: boolean
   onSell: boolean
+  rules: QuantNotificationRule[]
+}
+
+export interface QuantNotificationRule {
+  label: string
+  instrumentId: string
+  fastPeriod: number
+  slowPeriod: number
+  enabled: boolean
+}
+
+export interface QuantServiceConfig {
+  defaultFastPeriod: number
+  defaultSlowPeriod: number
+  syncAt: string
+  syncTimezone: string
+  syncSchedule: string
 }
 
 export interface QuantUser {

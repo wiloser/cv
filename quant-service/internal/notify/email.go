@@ -2,17 +2,23 @@ package notify
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"crypto/tls"
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"html"
 	"io"
 	"mime"
+	"mime/multipart"
+	"mime/quotedprintable"
 	"net"
 	"net/mail"
 	"net/smtp"
+	"net/textproto"
 	"net/url"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -40,6 +46,18 @@ func (m *Mailer) Configured() bool {
 }
 
 func (m *Mailer) Send(ctx context.Context, recipient, subject, body string) error {
+	return m.send(ctx, recipient, func(from, to *mail.Address) ([]byte, error) {
+		return buildMessage(from, to, subject, body), nil
+	})
+}
+
+func (m *Mailer) SendRich(ctx context.Context, recipient, subject, textBody, htmlBody string) error {
+	return m.send(ctx, recipient, func(from, to *mail.Address) ([]byte, error) {
+		return buildRichMessage(from, to, subject, textBody, htmlBody)
+	})
+}
+
+func (m *Mailer) send(ctx context.Context, recipient string, build func(from, to *mail.Address) ([]byte, error)) error {
 	if !m.Configured() {
 		return ErrNotConfigured
 	}
@@ -54,7 +72,10 @@ func (m *Mailer) Send(ctx context.Context, recipient, subject, body string) erro
 	if err != nil {
 		return err
 	}
-	message := buildMessage(from, to, subject, body)
+	message, err := build(from, to)
+	if err != nil {
+		return fmt.Errorf("build email: %w", err)
+	}
 	if err := m.sendMessage(ctx, from.Address, to.Address, message); err != nil {
 		return fmt.Errorf("send email: %w", err)
 	}
@@ -395,6 +416,51 @@ func buildMessage(from, to *mail.Address, subject, body string) []byte {
 	}, "\r\n"))
 }
 
+func buildRichMessage(from, to *mail.Address, subject, textBody, htmlBody string) ([]byte, error) {
+	var body bytes.Buffer
+	writer := multipart.NewWriter(&body)
+	parts := []struct {
+		contentType string
+		content     string
+	}{
+		{contentType: "text/plain; charset=UTF-8", content: textBody},
+		{contentType: "text/html; charset=UTF-8", content: htmlBody},
+	}
+	for _, part := range parts {
+		header := make(textproto.MIMEHeader)
+		header.Set("Content-Type", part.contentType)
+		header.Set("Content-Transfer-Encoding", "quoted-printable")
+		writerPart, err := writer.CreatePart(header)
+		if err != nil {
+			return nil, err
+		}
+		quoted := quotedprintable.NewWriter(writerPart)
+		if _, err := io.WriteString(quoted, part.content); err != nil {
+			_ = quoted.Close()
+			return nil, err
+		}
+		if err := quoted.Close(); err != nil {
+			return nil, err
+		}
+	}
+	if err := writer.Close(); err != nil {
+		return nil, err
+	}
+	encodedSubject := mime.QEncoding.Encode("UTF-8", subject)
+	contentType := mime.FormatMediaType("multipart/alternative", map[string]string{"boundary": writer.Boundary()})
+	headers := strings.Join([]string{
+		"Date: " + time.Now().UTC().Format(time.RFC1123Z),
+		"From: " + from.String(),
+		"To: " + to.String(),
+		"Subject: " + encodedSubject,
+		"MIME-Version: 1.0",
+		"Content-Type: " + contentType,
+		"",
+		"",
+	}, "\r\n")
+	return append([]byte(headers), body.Bytes()...), nil
+}
+
 func parseMailbox(value string) (*mail.Address, error) {
 	parsed, err := mail.ParseAddress(strings.TrimSpace(value))
 	if err != nil || strings.TrimSpace(parsed.Address) == "" || !strings.Contains(parsed.Address, "@") {
@@ -414,10 +480,15 @@ func setConnectionDeadline(ctx context.Context, connection net.Conn) {
 type Service struct {
 	accounts *account.Store
 	mailer   *Mailer
+	location *time.Location
 }
 
-func NewService(accounts *account.Store, mailer *Mailer) *Service {
-	return &Service{accounts: accounts, mailer: mailer}
+func NewService(accounts *account.Store, mailer *Mailer, locations ...*time.Location) *Service {
+	service := &Service{accounts: accounts, mailer: mailer}
+	if len(locations) > 0 {
+		service.location = locations[0]
+	}
+	return service
 }
 
 func (s *Service) Configured() bool {
@@ -428,7 +499,8 @@ func (s *Service) SendTest(ctx context.Context, recipient string) error {
 	if s == nil || s.mailer == nil {
 		return ErrNotConfigured
 	}
-	return s.mailer.Send(ctx, recipient, "量化监测平台 · 邮件通知测试", "这是一封来自量化监测平台的测试邮件。\n\n如果你能看到这封邮件，说明买入/卖出信号通知已经可以正常投递。")
+	plain := "这是一封来自量化监测平台的邮件样式预览。\n\n正式通知会汇总本轮所有符合条件的 EMA 金叉与死叉信号，每个账户只收到一封邮件。"
+	return s.mailer.SendRich(ctx, recipient, "量化监测平台 · 邮件样式预览", plain, buildTestDigestHTML(s.locationOrShanghai()))
 }
 
 func (s *Service) SendVerificationCode(ctx context.Context, recipient, code string) error {
@@ -439,45 +511,236 @@ func (s *Service) SendVerificationCode(ctx context.Context, recipient, code stri
 	return s.mailer.Send(ctx, recipient, "量化监测平台 · 注册验证码", body)
 }
 
-func (s *Service) NotifySignal(ctx context.Context, snapshot store.Snapshot) error {
+type digestSignal struct {
+	Label        string
+	InstrumentID string
+	Bar          string
+	FastPeriod   int
+	SlowPeriod   int
+	Cross        string
+	Price        float64
+	FastEMA      float64
+	SlowEMA      float64
+	EventTime    time.Time
+	EventKey     string
+}
+
+type recipientDigest struct {
+	recipient account.Recipient
+	signals   []digestSignal
+}
+
+func (s *Service) NotifySignals(ctx context.Context, snapshots []store.Snapshot) error {
 	if s == nil || s.accounts == nil || s.mailer == nil || !s.mailer.Configured() {
 		return nil
 	}
-	cross := strings.ToLower(strings.TrimSpace(snapshot.EMA.Cross))
-	if cross != "golden" && cross != "death" {
-		return nil
-	}
-	recipients, err := s.accounts.SignalRecipients(snapshot.InstrumentID, cross)
-	if err != nil {
-		return err
-	}
-	if len(recipients) == 0 {
-		return nil
-	}
-
-	action := "买入"
-	if cross == "death" {
-		action = "卖出"
-	}
-	eventTime := snapshot.EMA.LatestTime.UTC().Format("2006-01-02T15:04:05.000Z")
-	for _, recipient := range recipients {
-		key := fmt.Sprintf("%s|%s|%s|%d|%d|%s", recipient.UserID, snapshot.InstrumentID, eventTime, snapshot.FastPeriod, snapshot.SlowPeriod, cross)
-		shouldSend, err := s.accounts.BeginNotificationEvent(key)
+	candidates := make(map[string]*recipientDigest)
+	seen := make(map[string]map[string]struct{})
+	for _, snapshot := range snapshots {
+		cross := strings.ToLower(strings.TrimSpace(snapshot.EMA.Cross))
+		if (cross != "golden" && cross != "death") || snapshot.EMA.LatestTime.IsZero() {
+			continue
+		}
+		recipients, err := s.accounts.SignalRecipients(snapshot.InstrumentID, snapshot.FastPeriod, snapshot.SlowPeriod, cross)
 		if err != nil {
 			return err
 		}
-		if !shouldSend {
-			continue
-		}
-		subject := fmt.Sprintf("%s EMA 信号 · %s", snapshot.InstrumentID, action)
-		body := fmt.Sprintf("量化监测平台检测到新的 EMA 信号。\n\n标的：%s\n信号：%s（%s EMA 交叉）\n收盘价：%.8f\nEMA 参数：%d / %d\n信号时间：%s\n\n请结合仓位、风险和回测结果自行判断，平台不会自动替你下单。", snapshot.InstrumentID, action, cross, snapshot.EMA.Close, snapshot.FastPeriod, snapshot.SlowPeriod, eventTime)
-		if err := s.mailer.Send(ctx, recipient.Email, subject, body); err != nil {
-			s.accounts.ReleaseNotificationEvent(key)
-			return err
-		}
-		if err := s.accounts.CompleteNotificationEvent(key); err != nil {
-			return err
+		for _, recipient := range recipients {
+			eventKey := fmt.Sprintf("%s|%s|%s|%d|%d|%s", recipient.UserID, snapshot.InstrumentID, snapshot.EMA.LatestTime.UTC().Format(time.RFC3339Nano), snapshot.FastPeriod, snapshot.SlowPeriod, cross)
+			if seen[recipient.UserID] == nil {
+				seen[recipient.UserID] = make(map[string]struct{})
+			}
+			if _, exists := seen[recipient.UserID][eventKey]; exists {
+				continue
+			}
+			seen[recipient.UserID][eventKey] = struct{}{}
+			digest := candidates[recipient.UserID]
+			if digest == nil {
+				digest = &recipientDigest{recipient: recipient}
+				candidates[recipient.UserID] = digest
+			}
+			label := strings.TrimSpace(recipient.RuleLabel)
+			if label == "" {
+				label = fmt.Sprintf("EMA %d / %d", snapshot.FastPeriod, snapshot.SlowPeriod)
+			}
+			digest.signals = append(digest.signals, digestSignal{
+				Label:        label,
+				InstrumentID: snapshot.InstrumentID,
+				Bar:          snapshot.Bar,
+				FastPeriod:   snapshot.FastPeriod,
+				SlowPeriod:   snapshot.SlowPeriod,
+				Cross:        cross,
+				Price:        snapshot.EMA.Close,
+				FastEMA:      emaValue(snapshot, snapshot.FastPeriod),
+				SlowEMA:      emaValue(snapshot, snapshot.SlowPeriod),
+				EventTime:    snapshot.EMA.LatestTime,
+				EventKey:     eventKey,
+			})
 		}
 	}
-	return nil
+
+	userIDs := make([]string, 0, len(candidates))
+	for userID := range candidates {
+		userIDs = append(userIDs, userID)
+	}
+	sort.Strings(userIDs)
+	reserved := make([]string, 0)
+	for _, userID := range userIDs {
+		digest := candidates[userID]
+		pending := digest.signals[:0]
+		for _, signal := range digest.signals {
+			shouldSend, err := s.accounts.BeginNotificationEvent(signal.EventKey)
+			if err != nil {
+				for _, key := range reserved {
+					s.accounts.ReleaseNotificationEvent(key)
+				}
+				return err
+			}
+			if shouldSend {
+				reserved = append(reserved, signal.EventKey)
+				pending = append(pending, signal)
+			}
+		}
+		digest.signals = pending
+	}
+
+	var sendErrors []error
+	for _, userID := range userIDs {
+		digest := candidates[userID]
+		if len(digest.signals) == 0 {
+			continue
+		}
+		sort.Slice(digest.signals, func(i, j int) bool {
+			left, right := digest.signals[i], digest.signals[j]
+			if left.InstrumentID != right.InstrumentID {
+				return left.InstrumentID < right.InstrumentID
+			}
+			if left.FastPeriod != right.FastPeriod {
+				return left.FastPeriod < right.FastPeriod
+			}
+			if left.SlowPeriod != right.SlowPeriod {
+				return left.SlowPeriod < right.SlowPeriod
+			}
+			return left.Cross < right.Cross
+		})
+		subject := fmt.Sprintf("EMA 策略信号汇总 · %d 条新信号 · %s", len(digest.signals), time.Now().In(s.locationOrShanghai()).Format("2006-01-02"))
+		plainBody := buildDigestText(digest.signals, s.locationOrShanghai())
+		htmlBody := buildDigestHTML(digest.signals, s.locationOrShanghai())
+		if err := s.mailer.SendRich(ctx, digest.recipient.Email, subject, plainBody, htmlBody); err != nil {
+			for _, signal := range digest.signals {
+				s.accounts.ReleaseNotificationEvent(signal.EventKey)
+			}
+			sendErrors = append(sendErrors, fmt.Errorf("send notification digest to %s: %w", digest.recipient.Email, err))
+			continue
+		}
+		for _, signal := range digest.signals {
+			if err := s.accounts.CompleteNotificationEvent(signal.EventKey); err != nil {
+				s.accounts.ReleaseNotificationEvent(signal.EventKey)
+				sendErrors = append(sendErrors, fmt.Errorf("record notification event for %s: %w", digest.recipient.Email, err))
+			}
+		}
+	}
+	return errors.Join(sendErrors...)
+}
+
+func (s *Service) locationOrShanghai() *time.Location {
+	if s != nil && s.location != nil {
+		return s.location
+	}
+	location, err := time.LoadLocation("Asia/Shanghai")
+	if err != nil {
+		return time.FixedZone("CST", 8*60*60)
+	}
+	return location
+}
+
+func emaValue(snapshot store.Snapshot, period int) float64 {
+	for _, value := range snapshot.EMA.Values {
+		if value.Period == period {
+			return value.Current
+		}
+	}
+	return 0
+}
+
+func buildDigestText(signals []digestSignal, location *time.Location) string {
+	var body strings.Builder
+	_, _ = fmt.Fprintf(&body, "本轮发现 %d 条新的 EMA 信号：\n\n", len(signals))
+	for index, signal := range signals {
+		direction := "金叉 · 买入观察"
+		if signal.Cross == "death" {
+			direction = "死叉 · 卖出观察"
+		}
+		_, _ = fmt.Fprintf(&body, "%02d. %s | %s | %s\n", index+1, signal.InstrumentID, direction, signal.Label)
+		_, _ = fmt.Fprintf(&body, "    周期：%s  EMA：%d / %d\n    收盘价：%s  EMA 快/慢：%s / %s\n    信号时间：%s\n\n", signal.Bar, signal.FastPeriod, signal.SlowPeriod, formatPrice(signal.Price), formatPrice(signal.FastEMA), formatPrice(signal.SlowEMA), signal.EventTime.In(location).Format("2006-01-02 15:04 MST"))
+	}
+	body.WriteString("这是一封策略监测提示，不构成投资建议，平台不会自动下单。")
+	return body.String()
+}
+
+func buildDigestHTML(signals []digestSignal, location *time.Location) string {
+	buyCount, sellCount := 0, 0
+	for _, signal := range signals {
+		if signal.Cross == "golden" {
+			buyCount++
+		} else if signal.Cross == "death" {
+			sellCount++
+		}
+	}
+	var body strings.Builder
+	body.WriteString(`<!doctype html><html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>EMA 策略信号汇总</title></head><body style="margin:0;padding:0;background:#f0f1ec;color:#171916;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;">`)
+	body.WriteString(`<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f0f1ec;padding:28px 12px;"><tr><td align="center"><table role="presentation" width="640" cellspacing="0" cellpadding="0" style="width:100%;max-width:640px;border-collapse:separate;border-spacing:0;">`)
+	body.WriteString(`<tr><td style="padding:28px 30px;background:#171916;border-radius:20px 20px 0 0;color:#fff;"><table role="presentation" width="100%" cellspacing="0" cellpadding="0"><tr><td><div style="font-size:11px;letter-spacing:2px;font-weight:700;color:#d9ff63;">QUANT SIGNAL DIGEST</div><div style="margin-top:12px;font-size:26px;line-height:1.2;font-weight:750;letter-spacing:-.6px;">EMA 策略信号汇总</div><div style="margin-top:8px;font-size:13px;color:#b7bbb2;">`)
+	body.WriteString(html.EscapeString(time.Now().In(location).Format("2006年01月02日 15:04 MST")))
+	body.WriteString(`</div></td><td align="right" valign="top"><span style="display:inline-block;padding:8px 11px;border-radius:999px;background:#d9ff63;color:#171916;font-size:12px;font-weight:800;">`)
+	_, _ = fmt.Fprintf(&body, "%d 条信号", len(signals))
+	body.WriteString(`</span></td></tr></table></td></tr>`)
+	body.WriteString(`<tr><td style="padding:18px 20px;background:#fff;border-left:1px solid #e2e4dd;border-right:1px solid #e2e4dd;"><table role="presentation" width="100%" cellspacing="0" cellpadding="0"><tr>`)
+	writeDigestStat(&body, "金叉 · 买入观察", buyCount, "#1f7448", "#e9f6ed")
+	writeDigestStat(&body, "死叉 · 卖出观察", sellCount, "#a83d43", "#fff0ed")
+	writeDigestStat(&body, "策略组合", len(signals), "#5557e8", "#eff0ff")
+	body.WriteString(`</tr></table></td></tr>`)
+	for _, signal := range signals {
+		isBuy := signal.Cross == "golden"
+		color, background, title := "#1f7448", "#e9f6ed", "金叉 · 买入观察"
+		if !isBuy {
+			color, background, title = "#a83d43", "#fff0ed", "死叉 · 卖出观察"
+		}
+		body.WriteString(`<tr><td style="padding:0 20px 14px;background:#fff;border-left:1px solid #e2e4dd;border-right:1px solid #e2e4dd;"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border:1px solid #e4e6df;border-radius:15px;border-collapse:separate;border-spacing:0;overflow:hidden;"><tr><td width="5" style="background:` + color + `;font-size:0;line-height:0;">&nbsp;</td><td style="padding:17px 18px;"><table role="presentation" width="100%" cellspacing="0" cellpadding="0"><tr><td><div style="font-size:11px;font-weight:700;letter-spacing:.5px;color:#8b8f86;">` + html.EscapeString(signal.Label) + `</div><div style="margin-top:4px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:20px;font-weight:800;letter-spacing:-.4px;color:#171916;">` + html.EscapeString(signal.InstrumentID) + `</div></td><td align="right" valign="top"><span style="display:inline-block;padding:7px 9px;border-radius:999px;background:` + background + `;color:` + color + `;font-size:11px;font-weight:800;">` + title + `</span></td></tr></table>`)
+		body.WriteString(`<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-top:16px;border-top:1px solid #eef0ea;"><tr>`)
+		writeDigestMetric(&body, "周期", signal.Bar)
+		writeDigestMetric(&body, "EMA 快 / 慢", fmt.Sprintf("%d / %d", signal.FastPeriod, signal.SlowPeriod))
+		writeDigestMetric(&body, "收盘价", formatPrice(signal.Price))
+		body.WriteString(`</tr><tr>`)
+		writeDigestMetric(&body, fmt.Sprintf("EMA %d", signal.FastPeriod), formatPrice(signal.FastEMA))
+		writeDigestMetric(&body, fmt.Sprintf("EMA %d", signal.SlowPeriod), formatPrice(signal.SlowEMA))
+		writeDigestMetric(&body, "信号时间", signal.EventTime.In(location).Format("01-02 15:04 MST"))
+		body.WriteString(`</tr></table></td></tr></table></td></tr>`)
+	}
+	body.WriteString(`<tr><td style="padding:20px 24px 24px;background:#fff;border:1px solid #e2e4dd;border-top:0;border-radius:0 0 20px 20px;"><div style="padding:13px 15px;border-radius:12px;background:#f6f7f3;color:#656a60;font-size:11px;line-height:1.7;"><strong style="color:#252822;">风险提示</strong><br>EMA 信号仅用于策略监测，不构成投资建议。请结合仓位与风险自行判断；平台不会自动下单。</div><div style="margin-top:16px;text-align:center;font-size:10px;color:#9a9e95;">量化监测平台 · 本邮件汇总本轮全部符合条件的新信号</div></td></tr>`)
+	body.WriteString(`</table></td></tr></table></body></html>`)
+	return body.String()
+}
+
+func writeDigestStat(body *strings.Builder, label string, value int, color, background string) {
+	body.WriteString(`<td width="33.33%" style="padding:0 5px;"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-radius:12px;background:` + background + `;"><tr><td style="padding:12px;"><div style="font-size:10px;color:#757a71;">` + html.EscapeString(label) + `</div><div style="margin-top:5px;font-size:20px;font-weight:800;color:` + color + `;">`)
+	_, _ = fmt.Fprintf(body, "%d", value)
+	body.WriteString(`</div></td></tr></table></td>`)
+}
+
+func writeDigestMetric(body *strings.Builder, label, value string) {
+	body.WriteString(`<td width="33.33%" style="padding:11px 8px 3px 0;vertical-align:top;"><div style="font-size:9px;color:#92968d;">` + html.EscapeString(label) + `</div><div style="margin-top:4px;font-size:11px;font-weight:750;color:#282b25;">` + html.EscapeString(value) + `</div></td>`)
+}
+
+func buildTestDigestHTML(location *time.Location) string {
+	now := time.Now().In(location)
+	samples := []digestSignal{
+		{Label: "中周期 · 趋势确认", InstrumentID: "BTC-USDT", Bar: "1D", FastPeriod: 12, SlowPeriod: 26, Cross: "golden", Price: 68421.35, FastEMA: 67980.12, SlowEMA: 67120.48, EventTime: now},
+		{Label: "短周期 · 反转观察", InstrumentID: "ETH-USDT", Bar: "1D", FastPeriod: 8, SlowPeriod: 21, Cross: "death", Price: 3521.68, FastEMA: 3518.42, SlowEMA: 3530.06, EventTime: now},
+	}
+	return buildDigestHTML(samples, location)
+}
+
+func formatPrice(value float64) string {
+	return strconv.FormatFloat(value, 'f', -1, 64)
 }

@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"cv/quant-service/internal/account"
 	"cv/quant-service/internal/backtest"
@@ -276,7 +277,10 @@ func (h *Handler) configuration(writer http.ResponseWriter, request *http.Reques
 		"defaultFastPeriod": h.cfg.EMAPeriods[0],
 		"defaultSlowPeriod": h.cfg.EMAPeriods[len(h.cfg.EMAPeriods)-1],
 		"accountCurrency":   h.cfg.AccountCurrency,
-		"syncInterval":      h.cfg.SyncInterval.String(),
+		"syncAt":            h.cfg.SyncAt,
+		"syncTimezone":      h.cfg.SyncTimezone,
+		"syncSchedule":      h.cfg.SyncSchedule(),
+		"nextSyncAt":        h.cfg.NextSyncTime(time.Now()).UTC().Format("2006-01-02T15:04:05.000Z"),
 		"privateApiEnabled": h.cfg.PrivateAPIConfigured(),
 	})
 }
@@ -434,12 +438,6 @@ func (h *Handler) sync(writer http.ResponseWriter, request *http.Request) {
 	if err != nil {
 		writeServiceError(writer, http.StatusBadGateway, err)
 		return
-	}
-	if h.notifications != nil {
-		if err := h.notifications.NotifySignal(request.Context(), result.Snapshot); err != nil {
-			writeServiceError(writer, http.StatusBadGateway, err)
-			return
-		}
 	}
 	writeJSON(writer, http.StatusOK, result)
 }

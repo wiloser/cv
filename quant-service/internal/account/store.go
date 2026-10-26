@@ -15,6 +15,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
 
 	"cv/quant-service/internal/database"
 )
@@ -51,10 +52,19 @@ func (e EmailCodeRateLimitError) Unwrap() error {
 }
 
 type NotificationSettings struct {
-	Enabled bool   `json:"enabled"`
-	Email   string `json:"email"`
-	OnBuy   bool   `json:"onBuy"`
-	OnSell  bool   `json:"onSell"`
+	Enabled bool               `json:"enabled"`
+	Email   string             `json:"email"`
+	OnBuy   bool               `json:"onBuy"`
+	OnSell  bool               `json:"onSell"`
+	Rules   []NotificationRule `json:"rules"`
+}
+
+type NotificationRule struct {
+	Label        string `json:"label"`
+	InstrumentID string `json:"instrumentId"`
+	FastPeriod   int    `json:"fastPeriod"`
+	SlowPeriod   int    `json:"slowPeriod"`
+	Enabled      bool   `json:"enabled"`
 }
 
 type User struct {
@@ -77,8 +87,15 @@ type PublicUser struct {
 }
 
 type Recipient struct {
-	UserID string
-	Email  string
+	UserID    string
+	Email     string
+	RuleLabel string
+}
+
+type NotificationTarget struct {
+	InstrumentID string
+	FastPeriod   int
+	SlowPeriod   int
 }
 
 type session struct {
@@ -367,6 +384,25 @@ func (s *Store) UpdateNotifications(token string, settings NotificationSettings)
 			return PublicUser{}, err
 		}
 	}
+	rules, err := normalizeNotificationRules(settings.Rules)
+	if err != nil {
+		return PublicUser{}, err
+	}
+	settings.Rules = rules
+	if settings.Enabled {
+		if !settings.OnBuy && !settings.OnSell {
+			return PublicUser{}, fmt.Errorf("%w: select at least one signal direction", ErrInvalidInput)
+		}
+		activeRules := 0
+		for _, rule := range rules {
+			if rule.Enabled {
+				activeRules++
+			}
+		}
+		if activeRules == 0 {
+			return PublicUser{}, fmt.Errorf("%w: add or enable at least one EMA strategy", ErrInvalidInput)
+		}
+	}
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -396,6 +432,16 @@ func (s *Store) UpdateNotifications(token string, settings NotificationSettings)
 		ON CONFLICT(user_id) DO UPDATE SET enabled = excluded.enabled, email = excluded.email, on_buy = excluded.on_buy, on_sell = excluded.on_sell`,
 		userID, settings.Enabled, settings.Email, settings.OnBuy, settings.OnSell); err != nil {
 		return PublicUser{}, fmt.Errorf("save notification settings: %w", err)
+	}
+	if _, err := tx.ExecContext(ctx, `DELETE FROM user_notification_strategies WHERE user_id = ?`, userID); err != nil {
+		return PublicUser{}, fmt.Errorf("replace notification strategies: %w", err)
+	}
+	for index, rule := range rules {
+		if _, err := tx.ExecContext(ctx, `INSERT INTO user_notification_strategies(
+			user_id, sort_order, label, instrument_id, fast_period, slow_period, enabled
+		) VALUES (?, ?, ?, ?, ?, ?, ?)`, userID, index, rule.Label, rule.InstrumentID, rule.FastPeriod, rule.SlowPeriod, rule.Enabled); err != nil {
+			return PublicUser{}, fmt.Errorf("save notification strategy: %w", err)
+		}
 	}
 	if err := tx.Commit(); err != nil {
 		return PublicUser{}, fmt.Errorf("commit notification settings: %w", err)
@@ -427,17 +473,42 @@ func (s *Store) WatchedSymbols() ([]string, error) {
 	return symbols, nil
 }
 
-func (s *Store) SignalRecipients(instrumentID, cross string) ([]Recipient, error) {
+func (s *Store) NotificationTargets() ([]NotificationTarget, error) {
+	rows, err := s.db.QueryContext(context.Background(), `SELECT DISTINCT r.instrument_id, r.fast_period, r.slow_period
+		FROM user_notification_strategies AS r
+		JOIN user_notification_settings AS n ON n.user_id = r.user_id
+	WHERE n.enabled = 1 AND TRIM(n.email) <> '' AND r.enabled = 1 AND (n.on_buy = 1 OR n.on_sell = 1)
+		ORDER BY r.instrument_id, r.fast_period, r.slow_period`)
+	if err != nil {
+		return nil, fmt.Errorf("read notification strategies: %w", err)
+	}
+	defer rows.Close()
+	targets := make([]NotificationTarget, 0)
+	for rows.Next() {
+		var target NotificationTarget
+		if err := rows.Scan(&target.InstrumentID, &target.FastPeriod, &target.SlowPeriod); err != nil {
+			return nil, fmt.Errorf("read notification strategy: %w", err)
+		}
+		targets = append(targets, target)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate notification strategies: %w", err)
+	}
+	return targets, nil
+}
+
+func (s *Store) SignalRecipients(instrumentID string, fastPeriod, slowPeriod int, cross string) ([]Recipient, error) {
 	instrumentID = strings.ToUpper(strings.TrimSpace(instrumentID))
 	cross = strings.ToLower(strings.TrimSpace(cross))
-	rows, err := s.db.QueryContext(context.Background(), `SELECT u.id, n.email
+	rows, err := s.db.QueryContext(context.Background(), `SELECT u.id, n.email, r.label
 		FROM users AS u
 		JOIN user_notification_settings AS n ON n.user_id = u.id
-		JOIN user_watchlist AS w ON w.user_id = u.id
-		WHERE w.instrument_id = ? COLLATE NOCASE
+		JOIN user_notification_strategies AS r ON r.user_id = u.id
+		WHERE r.instrument_id = ? COLLATE NOCASE
+		  AND r.fast_period = ? AND r.slow_period = ? AND r.enabled = 1
 		  AND n.enabled = 1 AND TRIM(n.email) <> ''
 		  AND ((? = 'golden' AND n.on_buy = 1) OR (? = 'death' AND n.on_sell = 1))
-		ORDER BY u.id`, instrumentID, cross, cross)
+		ORDER BY u.id`, instrumentID, fastPeriod, slowPeriod, cross, cross)
 	if err != nil {
 		return nil, fmt.Errorf("read signal recipients: %w", err)
 	}
@@ -445,7 +516,7 @@ func (s *Store) SignalRecipients(instrumentID, cross string) ([]Recipient, error
 	recipients := make([]Recipient, 0)
 	for rows.Next() {
 		var recipient Recipient
-		if err := rows.Scan(&recipient.UserID, &recipient.Email); err != nil {
+		if err := rows.Scan(&recipient.UserID, &recipient.Email, &recipient.RuleLabel); err != nil {
 			return nil, fmt.Errorf("read signal recipient: %w", err)
 		}
 		recipients = append(recipients, recipient)
@@ -565,6 +636,7 @@ func loadUser(ctx context.Context, db *sql.DB, userID string) (User, error) {
 	}
 
 	user.Watchlist = make([]string, 0)
+	user.Notifications.Rules = make([]NotificationRule, 0)
 	rows, err := db.QueryContext(ctx, `SELECT instrument_id FROM user_watchlist WHERE user_id = ? ORDER BY sort_order, instrument_id`, userID)
 	if err != nil {
 		return User{}, fmt.Errorf("read account watchlist: %w", err)
@@ -596,6 +668,26 @@ func loadUser(ctx context.Context, db *sql.DB, userID string) (User, error) {
 		user.Notifications.Enabled = enabled
 		user.Notifications.OnBuy = onBuy
 		user.Notifications.OnSell = onSell
+	}
+	rows, err = db.QueryContext(ctx, `SELECT label, instrument_id, fast_period, slow_period, enabled
+		FROM user_notification_strategies WHERE user_id = ? ORDER BY sort_order, id`, userID)
+	if err != nil {
+		return User{}, fmt.Errorf("read notification strategies: %w", err)
+	}
+	for rows.Next() {
+		var rule NotificationRule
+		if err := rows.Scan(&rule.Label, &rule.InstrumentID, &rule.FastPeriod, &rule.SlowPeriod, &rule.Enabled); err != nil {
+			_ = rows.Close()
+			return User{}, fmt.Errorf("read notification strategy: %w", err)
+		}
+		user.Notifications.Rules = append(user.Notifications.Rules, rule)
+	}
+	if err := rows.Err(); err != nil {
+		_ = rows.Close()
+		return User{}, fmt.Errorf("iterate notification strategies: %w", err)
+	}
+	if err := rows.Close(); err != nil {
+		return User{}, fmt.Errorf("close notification strategies: %w", err)
 	}
 	return user, nil
 }
@@ -640,6 +732,38 @@ func normalizeSymbols(symbols []string) ([]string, error) {
 		}
 		seen[normalized] = struct{}{}
 		result = append(result, normalized)
+	}
+	return result, nil
+}
+
+func normalizeNotificationRules(rules []NotificationRule) ([]NotificationRule, error) {
+	if len(rules) > 50 {
+		return nil, fmt.Errorf("%w: at most 50 EMA strategies are allowed", ErrInvalidInput)
+	}
+	result := make([]NotificationRule, 0, len(rules))
+	seen := make(map[string]struct{}, len(rules))
+	for _, rule := range rules {
+		symbols, err := normalizeSymbols([]string{rule.InstrumentID})
+		if err != nil {
+			return nil, err
+		}
+		if len(symbols) != 1 {
+			return nil, fmt.Errorf("%w: each EMA strategy needs an instrument", ErrInvalidInput)
+		}
+		if rule.FastPeriod < 2 || rule.FastPeriod >= rule.SlowPeriod || rule.SlowPeriod > 300 {
+			return nil, fmt.Errorf("%w: EMA periods must satisfy 2 <= fast < slow <= 300", ErrInvalidInput)
+		}
+		rule.Label = strings.TrimSpace(rule.Label)
+		if utf8.RuneCountInString(rule.Label) > 32 {
+			return nil, fmt.Errorf("%w: strategy label must be 32 characters or fewer", ErrInvalidInput)
+		}
+		rule.InstrumentID = symbols[0]
+		key := fmt.Sprintf("%s|%d|%d", rule.InstrumentID, rule.FastPeriod, rule.SlowPeriod)
+		if _, exists := seen[key]; exists {
+			return nil, fmt.Errorf("%w: duplicate EMA strategy %s (%d/%d)", ErrInvalidInput, rule.InstrumentID, rule.FastPeriod, rule.SlowPeriod)
+		}
+		seen[key] = struct{}{}
+		result = append(result, rule)
 	}
 	return result, nil
 }
