@@ -45,6 +45,13 @@ set -a
 source "$ENV_FILE"
 set +a
 
+# OKX requests use Go's default HTTP transport, which reads these environment
+# variables. Keep the production host's local SOCKS5 proxy as the default while
+# allowing the protected env file to override it.
+export HTTP_PROXY="${HTTP_PROXY:-socks5h://127.0.0.1:1080}"
+export HTTPS_PROXY="${HTTPS_PROXY:-socks5h://127.0.0.1:1080}"
+export NO_PROXY="${NO_PROXY:-localhost,127.0.0.1}"
+
 export HTTP_ADDR="127.0.0.1:$PORT"
 export DATA_DIR="$DATA_DIR"
 

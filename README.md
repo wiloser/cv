@@ -61,6 +61,8 @@ chmod 600 /home/deploy/cv/env/quant-service.env
 tail -n 80 /home/deploy/cv/logs/quant-service.log
 ```
 
+生产 Go 服务通过 `HTTP_PROXY`、`HTTPS_PROXY` 和 `NO_PROXY` 使用 OKX 出站代理。当前启动脚本默认使用服务器本机的 SOCKS5 代理 `socks5h://127.0.0.1:1080`；如需覆盖，在 `/home/deploy/cv/env/quant-service.env` 中设置这些变量后重启服务。GitHub Actions 部署会复用该服务器环境文件，不会覆盖它。
+
 Actions 构建前端时会默认将 API 地址设为同源 `/api/quant/...`；因此还需在 1Panel 的 `codes123.cn` 网站配置中加入 [量化服务反向代理片段](quant-service/deploy/1panel-locations.conf)，将 API 转发到 `127.0.0.1:18188`。不要新建公网端口或改动其他项目的 `location`。若选择跨域 API，则应配置相应的 `VITE_QUANT_*` 地址，并在 `/home/deploy/cv/env/quant-service.env` 设置 `CORS_ORIGIN` 为前端的完整 origin。
 
 ```bash
